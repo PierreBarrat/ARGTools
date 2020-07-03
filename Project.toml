@@ -1,0 +1,7 @@
+name = "ARGTools"
+uuid = "9d79bb22-e449-4c7c-894c-454c3d3f5473"
+authors = ["PierreBarrat <p.barrat@live.fr>"]
+version = "0.1.0"
+
+[deps]
+TreeTools = "62f0eae3-8c0e-4032-a621-7756092209e5"
