@@ -83,6 +83,7 @@ function prune!(arg::ARG, n::ARGNode)
 		end
 	end
 	delete!(arg.nodes, n.label)
+	n.isleaf && delete!(arg.leaves, n.label)
 	return n
 end
 

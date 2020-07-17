@@ -77,16 +77,18 @@ mutable struct ARG
 	degree::Int64
 	root::Array{ARGNode}
 	nodes::Dict{String,ARGNode}
+	leaves::Dict{String,ARGNode}
 end
 function ARG(; degree=1,
 	root = Array{ARGNode}(undef, degree),
-	nodes = Dict{String, ARGNode}()
+	nodes = Dict{String, ARGNode}(),
+	leaves = Dict{String, ARGNode}()
 	)
-	return ARG(degree, root, nodes)
+	return ARG(degree, root, nodes, leaves)
 end
 
 function show(io::IO, arg::ARG)
-	println("ARG of degree $(arg.degree) with $(length(arg.nodes)) nodes.")
+	println("ARG of degree $(arg.degree) with $(length(arg.leaves)) leaves.")
 end
 show(arg::ARG) = show(stdout, arg)
 

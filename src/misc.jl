@@ -85,3 +85,13 @@ function consistent_ancestors_colors(n::ARGNode)
 	end	
 	return true
 end
+
+
+"""
+	total_branch_length(arg::ARG)
+
+Total branch length of the ARG, for all colors. 
+"""
+function total_branch_length(arg::ARG)
+	return sum(skipmissing([sum(d.tau for d in x.data) for x in values(ARG.nodes)]))
+end
