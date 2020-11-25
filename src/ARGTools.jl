@@ -43,7 +43,7 @@ function ARGNode(; degree=1,
 	isroot = ones(Bool, degree),
 	isleaf = true
 	)
-	return ARGNode(anc, anccolor, children, color, degree, label, data, isroot, isleaf)
+	return ARGNode(convert(Array{Union{ARGNode{TreeTools.TimeData},Nothing}}, anc), anccolor, children, color, degree, label, data, isroot, isleaf)
 end
 
 # Convenience functions

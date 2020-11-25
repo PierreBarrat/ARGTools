@@ -17,8 +17,6 @@ function trees_from_ARG(arg::ARG; prune_singletons = true)
 	return treelist
 end
 function trees_from_ARG(an::ARGNode, r::TreeNode, c::Int64)
-	println(an.label)
-	println(length(an.anccolor))
 	ic = findfirst(x->x[c], an.anccolor)
 	n = TreeNode(deepcopy(an.data[ic]),
 		anc = r,
@@ -91,7 +89,7 @@ function glue_node_to_ARG!(arg::ARG, tn::TreeNode, ARGanc::Union{ARGNode, Nothin
 				push!(an.anccolor, _color(color, arg.degree))
 			end
 		else
-			i = findfirst(x->x==ARGanc.label, [x.label for x in an.anc]) 
+			i = findfirst(x->x==ARGanc.label, [x.label for x in Iterators.filter(!isnothing, an.anc)]) 
 			if !isnothing(i)
 				# if `ARGanc` is already the ancestor of `an`, set corresponding color to true
 				an.anccolor[i][color] = true
@@ -112,7 +110,7 @@ function glue_node_to_ARG!(arg::ARG, tn::TreeNode, ARGanc::Union{ARGNode, Nothin
 			color = _color(color, arg.degree), 
 			label = tn.label,
 			data = [tn.data],
-			isroot = _color(color, arg.degree)*tn.isroot,
+			isroot = convert(Array{Bool}, _color(color, arg.degree)*tn.isroot),
 			isleaf = tn.isleaf)
 		arg.nodes[an.label] = an
 	end
@@ -131,7 +129,7 @@ end
 
 Build an `ARG` from a single tree. If `degree > 1`, the output will not be a valid `ARG` object. 
 """
-function ARG_from_tree(tree::Tree ; degree = 1)
+function ARG_from_tree(tree::Tree{T} ; degree = 1) where T
 	# Root
 	arg = ARG(degree=degree)
 	root = ARGNode(degree = degree,
@@ -166,7 +164,7 @@ function ARGNode_from_TreeNode!(arg::ARG, tn::TreeNode, ARGanc::ARGNode; degree 
 		color = _color(1, degree), 
 		label = tn.label,
 		data = [tn.data],
-		isroot = _color(1, degree)*tn.isroot,
+		isroot = convert(Array{Bool}, _color(1, degree)*tn.isroot),
 		isleaf = tn.isleaf)
 	for c in tn.child
 		nc = ARGNode_from_TreeNode!(arg, c, n, degree = degree)
