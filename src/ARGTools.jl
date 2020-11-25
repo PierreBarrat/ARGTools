@@ -22,24 +22,24 @@ Fields of the `ARGNode` structure:
 By construction, `sum(ARGNode.color)` should be equal to `sum(sum(ARGNode.anc_color))`. This means that each node has exactly one ancestor in each tree. For the same reason, `reduce((x,y)->x .+ y, n.anccolor)` should be all ones. 
 - `degree`: sum of `color`, number of trees current node exists in. 
 """
-mutable struct ARGNode
-	anc::Array{Union{ARGNode,Nothing}}
+mutable struct ARGNode{T <: TreeTools.TreeNodeData}
+	anc::Array{Union{ARGNode{T},Nothing}}
 	anccolor::Array{Array{Bool,1},1} # Should be renamed - `upbranchcolor` for instance. It's *not* the color of the ancestor, but the color of the branch leading to it. 
-	children::Array{ARGNode,1}
+	children::Array{ARGNode{T},1}
 	color::Array{Bool,1}
 	degree::Int64
 	label::String
-	data::Array{TreeTools.EvoData,1}
+	data::Array{T,1}
 	isroot::Array{Bool,1}
 	isleaf::Bool
 end
 function ARGNode(; degree=1, 
-	anc = Array{Union{ARGNode,Nothing}}(nothing, degree),
+	anc = Array{Union{ARGNode{TreeTools.TimeData},Nothing}}(nothing, degree),
 	anccolor = [_color(i, degree) for i in 1:length(anc)],
-	children = Array{ARGNode}(undef, 0), 
+	children = Array{ARGNode{TreeTools.TimeData}}(undef, 0), 
 	color = ones(Bool, degree),
 	label = "",
-	data = Array{TreeTools.EvoData}(undef, 0),
+	data = Array{TreeTools.TimeData}(undef, 0),
 	isroot = ones(Bool, degree),
 	isleaf = true
 	)

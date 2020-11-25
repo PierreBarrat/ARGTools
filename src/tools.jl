@@ -1,23 +1,22 @@
-function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Array{Bool,1})
+function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Array{Bool,1}, tau=missing)
 	for c in findall(color)
-		regraft!(n, oldanc, newanc, c)
+		regraft!(n, oldanc, newanc, c, tau)
 	end
 end
 """
-	regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Array{Bool,1})
-	regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64)
+	regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Array{Bool,1}, tau=missing)
+	regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, tau=missing)
 
-Regraft node `n` from `oldanc` to `newanc` for color `color`. Base routine. 
+Regraft node `n` from `oldanc` to `newanc` for color `color`. 
 ## Note
 - `oldanc` has to be an ancestor of `n` for color `color`
 - `newanc` and `n` have to be of color `color`
 ## Warning  
 Does not handle `Nothing`. Regrafting a root node **or** to `Nothing` will fail. 
 """
-function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64; w=false)
+function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, tau=missing; w=false)
 	i_old = findfirst(x->x==oldanc, n.anc)
 	i_child = findfirst(x->x==n, oldanc.children)
-	# n.label=="internal_23" && println(n.anc)
 	if isnothing(i_old)
 		error("Attempting to regraft node from uncorrect ancestor: $(oldanc.label) not ancestor of $(n.label)")
 	elseif isnothing(i_child)
@@ -34,17 +33,16 @@ function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64; w=
 		error("Attempting to regraft node for the wrong color.")
 	end
 	#
-	regraft!(n, oldanc, newanc, color, i_old)
+	regraft!(n, oldanc, newanc, color, i_old, tau)
 end
 """
 	regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, i_old::Int64)
 
 Core function for regrafting. Does not handle errors.
 """
-function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, i_old::Int64)
-	# n.label == "internal_32" && println(n)
+function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, i_old::Int64, tau=missing)
 	# Changes for n and newanc
-	graft!(n, newanc, color) 
+	graft!(n, newanc, color, tau) 
 	# Changes for n and oldanc
 	cut_branch!(n, i_old, color)
 end
@@ -53,7 +51,7 @@ end
 
 Graft `n` onto `a` for color `clr`. 
 """
-function graft!(n::ARGNode, a::ARGNode, clr::Int64)
+function graft!(n::ARGNode{T}, a::ARGNode{T}, clr::Int64, tau=missing) where T
 	# Changes for `a`
 	if !isnothing(a) && !is_ancestor(a, n)[1]
 		push!(a.children, n)
@@ -63,6 +61,7 @@ function graft!(n::ARGNode, a::ARGNode, clr::Int64)
 	if isnothing(ia) # We have to create a new ancestor for `n`
 		push!(n.anc, a)
 		push!(n.anccolor, _color(clr, length(n.color)))
+		push!(n.data, T(tau))
 	else # Just set the branch of the right color
 		n.anccolor[ia][clr] = true
 	end
@@ -102,10 +101,12 @@ function cut_branch!(n::ARGNode, i::Int64, clr::Int64)
 	if !(|)(n.anccolor[i]...)
 		deleteat!(n.anc, i)
 		deleteat!(n.anccolor, i)
+		deleteat!(n.data, i)
 		if !isnothing(a)
 			ic = findfirst(x->x.label==n.label, a.children)
 			deleteat!(a.children, ic)
 		end
+	else 
 	end
 	# Correct colors if necessary
 	correct_color!(a)
@@ -175,10 +176,11 @@ function prune_singletons!(arg::ARG; v=false, Nit=1e3)
 		for n in values(arg.nodes)
 			if length(n.children) == 1
 				# Graft the child onto ancestors
-				v && println("Pruned $(n.label).\n Ancestors $([x.label for x in n.anc]).\n Child $(n.children[1].label).")
+				v && println("Prune $(n.label).\n Ancestors $([x.label for x in n.anc]).\n Child $(n.children[1].label).")
 				for (i,a) in enumerate(n.anc)
+					ic = findfirst(x->x==n, n.children[1].anc) # Index of n in n.children[1].anc
 					clr = n.anccolor[i]
-					regraft!(n.children[1], n, a, clr)
+					regraft!(n.children[1], n, a, clr, n.children[1].data[ic].tau + n.data[i].tau)
 				end
 				prune!(arg, n)
 				npruned += 1

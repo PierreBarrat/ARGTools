@@ -18,7 +18,17 @@ function MCCs_from_arg(arg)
 			end
 		end
 	end
-	return mccs
+	# return sort(mccs, by=x->length(x[2]))
+	return sort([sort(m) for m in values(mccs)], lt=clt)
+end
+function clt(x,y)
+    if length(x) < length(y)
+        return true
+    elseif length(x) > length(y)
+        return false
+    else
+        return x[1] < y[1]
+    end
 end
 
 
