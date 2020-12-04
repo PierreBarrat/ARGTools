@@ -258,11 +258,19 @@ end
 Check if `a` is an ancestor of `c`. Return a `Bool` as well as an array of colors for which `a` is an ancestor of `c`. 		
 """
 function is_ancestor(a::ARGNode, c::ARGNode)
-	out = zeros(Bool, c.degree)
+	# println()
+	# println(a.label)
+	# println(c.label)
+	out = zeros(Bool, length(c.color))
 	flag = false
 	for clr in findall(c.color)
 		if is_ancestor(a,c,clr)
-			out[clr] = true
+			try
+				out[clr] = true
+			catch
+				println(a.label)
+				println(c.label)
+			end
 			flag = true
 		end
 	end

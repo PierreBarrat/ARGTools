@@ -7,12 +7,9 @@ function trees_from_ARG(arg::ARG; prune_singletons = true)
 	treelist = Array{Tree,1}(undef,0)
 	for c in 1:arg.degree
 		ar = arg.root[c]
-		tr = trees_from_ARG(ar, c)
-		if prune_singletons
-			push!(treelist, TreeTools.remove_internal_singletons!(node2tree(tr)))
-		else
-			push!(treelist, TreeTools.node2tree(tr))
-		end
+		t = node2tree(trees_from_ARG(ar, c))
+		prune_singletons && TreeTools.remove_internal_singletons!(t)
+		push!(treelist, t)
 	end
 	return treelist
 end
