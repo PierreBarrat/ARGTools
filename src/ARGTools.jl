@@ -34,16 +34,16 @@ mutable struct ARGNode{T <: TreeTools.TreeNodeData}
 	isleaf::Bool
 end
 function ARGNode(; degree=1, 
-	anc = Array{Union{ARGNode{TreeTools.TimeData},Nothing}}(nothing, degree),
+	anc = Array{Union{ARGNode{TreeTools.MiscData},Nothing}}(nothing, degree),
 	anccolor = [_color(i, degree) for i in 1:length(anc)],
-	children = Array{ARGNode{TreeTools.TimeData}}(undef, 0), 
+	children = Array{ARGNode{TreeTools.MiscData}}(undef, 0), 
 	color = ones(Bool, degree),
 	label = "",
-	data = Array{TreeTools.TimeData}(undef, 0),
+	data = Array{TreeTools.MiscData}(undef, 0),
 	isroot = ones(Bool, degree),
 	isleaf = true
 	)
-	return ARGNode(convert(Array{Union{ARGNode{TreeTools.TimeData},Nothing}}, anc), anccolor, children, color, degree, label, data, isroot, isleaf)
+	return ARGNode(convert(Array{Union{ARGNode{TreeTools.MiscData},Nothing}}, anc), anccolor, children, color, degree, label, data, isroot, isleaf)
 end
 
 # Convenience functions
