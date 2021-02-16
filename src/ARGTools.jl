@@ -1,7 +1,7 @@
 module ARGTools
 
-# using RecombTools
 using TreeTools
+using Random, Distributions
 
 import Base.show, Base.isequal
 export ARGNode, ARG, show
@@ -101,6 +101,7 @@ include("ARGs_and_trees.jl")
 include("tools.jl")
 include("misc.jl")
 include("MCCs.jl")
+include("simulate.jl")
 
 
 end
