@@ -53,7 +53,7 @@ end
 
 """
 	simulate(param::SimParam)
-	simulate(N,r,n0)
+	simulate(N,r,n0; K=2, kwargs..)
 """
 function simulate(param::SimParam; 
 	verbose=false, 
