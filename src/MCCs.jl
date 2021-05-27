@@ -1,7 +1,7 @@
 """
 	MCCs_from_arg(arg)
 
-For each arg leave, find the set of leaves that are connected to it by full branches. 
+For each arg leave, find the set of leaves that are connected to it by full branches.
 """
 function MCCs_from_arg(arg)
 	mccs = Dict{AbstractString,Array{AbstractString,1}}()
@@ -41,8 +41,8 @@ function coherent_subtrees(r::ARGNode)
 			@error "Node should exist for all segments."
 		end
 	end
-	# 
-	if r.isleaf 
+	#
+	if r.isleaf
 		out = [r.label]
 	else
 		out = String[]
@@ -69,7 +69,7 @@ end
 """
 	common_splits(arg::ARG)
 
-Fixing this would be great. 
+Fixing this would be great.
 """
 function common_splits(arg::ARG)
 	@warn "This function doesn't make sense -- Common arg branch can lead to different splits"
@@ -77,7 +77,7 @@ function common_splits(arg::ARG)
 	out = []
 	for (s,n) in arg.nodes
 		if !prod(n.isroot) && n.degree == arg.degree && length(n.anc) == 1
-			sp = TreeTools.Split(Set(TreeTools.node_leavesclade_labels(t.lnodes[s])))
+			sp = TreeTools.Split(Set(collect(POTleaves(t.lnodes[s]))))
 			if !in(sp, out)
 				push!(out, sp)
 			end
@@ -94,10 +94,10 @@ function is_common_branch(n::ARGNode)
 end
 
 """
-Goal: Can I link the two nodes with fully common branches?  
-Method:  
-- go up from `n1` until a non-common branch is found. Store nodes found. 
-- go up from `n2` until a non-common branch is found (false) or a previously stored node is found (true). 
+Goal: Can I link the two nodes with fully common branches?
+Method:
+- go up from `n1` until a non-common branch is found. Store nodes found.
+- go up from `n2` until a non-common branch is found (false) or a previously stored node is found (true).
 """
 function is_linked_pair(n1::ARGNode, n2::ARGNode)
 	if n1 == n2

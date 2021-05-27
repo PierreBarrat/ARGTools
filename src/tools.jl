@@ -61,7 +61,8 @@ function graft!(n::ARGNode{T}, a::ARGNode{T}, clr::Int64, tau=missing) where T
 	if isnothing(ia) # We have to create a new ancestor for `n`
 		push!(n.anc, a)
 		push!(n.anccolor, _color(clr, length(n.color)))
-		push!(n.data, T(tau))
+		push!(n.tau, tau)
+		push!(n.data, T())
 	else # Just set the branch of the right color
 		n.anccolor[ia][clr] = true
 	end
@@ -180,7 +181,7 @@ function prune_singletons!(arg::ARG; v=false, Nit=1e3)
 				for (i,a) in enumerate(n.anc)
 					ic = findfirst(x->x==n, n.children[1].anc) # Index of n in n.children[1].anc
 					clr = n.anccolor[i]
-					regraft!(n.children[1], n, a, clr, n.children[1].data[ic].tau + n.data[i].tau)
+					regraft!(n.children[1], n, a, clr, n.children[1].tau[ic] + n.tau[i])
 				end
 				prune!(arg, n)
 				npruned += 1

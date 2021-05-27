@@ -212,6 +212,7 @@ function do_coalescence!(simstate::SimState, t)
 	n2 = simstate.arg.nodes[simstate.eligible_for_coalescence[j]]
 	t1 = t + get_exact_t() - simstate.node_times[n1.label]
 	t2 = t + get_exact_t() - simstate.node_times[n2.label]
+
 	# Coalesce
 	new_node = do_coalescence!(simstate.arg, n1, n2, t1, t2, simstate)
 	for (i,c) in enumerate(n1.color .& n2.color)
@@ -224,6 +225,8 @@ function do_coalescence!(simstate::SimState, t)
 			simstate.arg.root[i] = new_node
 		end
 	end
+
+	# Fix simstate
 	# `simstate.eligible_for_coalescence` 
 	deleteat!(simstate.eligible_for_coalescence, (min(i,j), max(i,j)))
 	push!(simstate.eligible_for_coalescence, new_node.label)
@@ -231,17 +234,22 @@ function do_coalescence!(simstate::SimState, t)
 	# Note: if `new_node` is a root, I remove it from eligible_for_reassortment. This greatly simplifies the code... 
 	idx = findall(x->in(x, (n1.label, n2.label)), simstate.eligible_for_reassortment)
 	deleteat!(simstate.eligible_for_reassortment, idx)
-	(new_node.degree > 1 && !(|)(new_node.isroot...)) && push!(simstate.eligible_for_reassortment, new_node.label)
+	if new_node.degree > 1 && !(|)(new_node.isroot...)
+		push!(simstate.eligible_for_reassortment, new_node.label)
+	end
+
 	# Node times
-	simstate.node_times[new_node.label] = simstate.node_times[n1.label] + n1.data[1].tau
+	simstate.node_times[new_node.label] = simstate.node_times[n1.label] + n1.tau[1]
 	delete!(simstate.node_times, n1.label)
 	delete!(simstate.node_times, n2.label)
+
 	# `pop_per_color`
 	# If new_node is the root for some colors and does not have any other color, remove it from eligible_for_coalescence
 	if sum(new_node.isroot) == new_node.degree
 		idx = findall(x->x==new_node.label, simstate.eligible_for_coalescence)
 		deleteat!(simstate.eligible_for_coalescence, idx)
 	end
+
 	# Add new node to ARG
 	simstate.arg.nodes[new_node.label] = new_node
 end
@@ -267,7 +275,8 @@ function do_coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2, simstate)
 	# Children nodes
 	for (n,t) in zip((n1,n2),(t1,t2))
 		push!(n.anc, new_node)	# Pushing in case n is the root node of some color. In this case it already has an ancestor (nothing)
-		push!(n.data, TreeTools.MiscData(tau=t))
+		push!(n.tau, t)
+		push!(n.data, TreeTools.MiscData())
 		push!(n.anccolor, copy(n.color) .* new_node.color)
 	end
 	#
@@ -338,16 +347,14 @@ function do_split!(n::ARGNode, c1::Array{Int64,1}, c2::Array{Int64,1}, t)
 	# Child
 	push!(n.anc, a1)
 	push!(n.anccolor, copy(new_clr1))
-	if length(n.anccolor[end]) != 2 
-		# @warn "$(n.color)"
-	end
-	push!(n.data, TreeTools.MiscData(tau=t))
+	push!(n.tau, t)
+	push!(n.data, TreeTools.MiscData())
+
 	push!(n.anc, a2)
 	push!(n.anccolor, copy(new_clr2))
-	if length(n.anccolor[end]) != 2 
-		# @warn "$(n.color)"
-	end
-	push!(n.data, TreeTools.MiscData(tau=t))
+	push!(n.tau, t)
+	push!(n.data, TreeTools.MiscData())
+	#
 	return a1, a2
 end
 
@@ -367,7 +374,8 @@ function set_roots_ancestry!(arg::ARG)
 		# Adding `nothing` as ancestor
 		push!(ar.anc, nothing)
 		push!(ar.anccolor, ARGTools._color(c, arg.degree))
-		push!(ar.data, TreeTools.MiscData(tau=missing))
+		push!(ar.tau, missing)
+		push!(ar.data, TreeTools.MiscData())
 	end
 	ARGTools.prune_lone_nodes!(arg)
 end

@@ -19,7 +19,8 @@ function trees_from_ARG(an::ARGNode, r::TreeNode, c::Int64)
 		anc = r,
 		isleaf = an.isleaf,
 		isroot = false,
-		label=an.label
+		label = an.label,
+		tau = an.tau[ic],
 		)
 	for ac in ARGTools.get_children(an, c)
 		tc = trees_from_ARG(ac, n, c)
@@ -39,7 +40,8 @@ function trees_from_ARG(ar::ARGNode, c::Int64)
 		anc = nothing,
 		isleaf = ar.isleaf,
 		isroot = true,
-		label = ar.label
+		label = ar.label,
+		tau = ar.tau[ic],
 		)
 	for ac in ARGTools.get_children(ar, c)
 		tc = trees_from_ARG(ac, tr, c)

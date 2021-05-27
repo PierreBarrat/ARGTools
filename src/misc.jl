@@ -93,5 +93,5 @@ end
 Total branch length of the ARG, for all colors. 
 """
 function total_branch_length(arg::ARG)
-	return sum(skipmissing([sum(d.tau for d in x.data) for x in values(arg.nodes)]))
+	return sum(skipmissing([sum(x.tau) for x in values(arg.nodes)]))
 end

@@ -24,13 +24,14 @@ By construction, `sum(ARGNode.color)` should be equal to `sum(sum(ARGNode.anc_co
 """
 mutable struct ARGNode{T <: TreeTools.TreeNodeData}
 	anc::Array{Union{ARGNode{T},Nothing}}
-	anccolor::Array{Array{Bool,1},1} # Should be renamed - `upbranchcolor` for instance. It's *not* the color of the ancestor, but the color of the branch leading to it. 
-	children::Array{ARGNode{T},1}
-	color::Array{Bool,1}
+	anccolor::Array{Array{Bool, 1}, 1} # Should be renamed - `upbranchcolor` for instance. It's *not* the color of the ancestor, but the color of the branch leading to it.
+	children::Array{ARGNode{T}, 1}
+	color::Array{Bool, 1}
 	degree::Int64
 	label::String
-	data::Array{T,1}
-	isroot::Array{Bool,1}
+	tau::Array{Union{Missing, Float64}, 1}
+	data::Array{T, 1}
+	isroot::Array{Bool, 1}
 	isleaf::Bool
 end
 function ARGNode(; degree=1, 
@@ -39,11 +40,23 @@ function ARGNode(; degree=1,
 	children = Array{ARGNode{TreeTools.MiscData}}(undef, 0), 
 	color = ones(Bool, degree),
 	label = "",
+	tau = Array{Union{Missing, Float64}, 1}(undef, 0),
 	data = Array{TreeTools.MiscData}(undef, 0),
 	isroot = ones(Bool, degree),
-	isleaf = true
+	isleaf = true,
 	)
-	return ARGNode(convert(Array{Union{ARGNode{TreeTools.MiscData},Nothing}}, anc), anccolor, children, color, degree, label, data, isroot, isleaf)
+	return ARGNode(
+		convert(Array{Union{ARGNode{TreeTools.MiscData},Nothing}}, anc),
+		anccolor,
+		children,
+		color,
+		degree,
+		label,
+		tau,
+		data,
+		isroot,
+		isleaf,
+	)
 end
 
 # Convenience functions
