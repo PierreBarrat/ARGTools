@@ -238,11 +238,17 @@ end
 
 
 """
+	find_ancestor_index(a, c)
+
+Find index if `a` in the ancestors of `c`.
+"""
+find_ancestor_index(a, c) = findfirst(x -> x==a, c.anc)
+"""
 	is_ancestor(a::ARGNode, c::ARGNode, color::Vararg{Int64})
 
 Check if `a` is an ancestor of `c` for colors in `color`. Also check whether `c` is in `a.children`. 		
 """
-function is_ancestor(a::ARGNode, c::ARGNode, color::Vararg{Int64})
+function is_ancestor(a::ARGNode, c::ARGNode, color::Vararg{Integer})
 
 	i_anc = findfirst(x->!isnothing(x) && x.label==a.label, c.anc)
 	flag = !isnothing(i_anc) && !isnothing(findfirst(x->x.label==c.label, a.children)) 
