@@ -61,7 +61,7 @@ function simulate(param::SimParam;
 	prune_singletons=true,
 	popvar=t->1, 
 	output_history = false,
-	simtype = :kingman)
+	simtype = :yule)
 	set_verbose(verbose)
 	set_vverbose(vverbose)
 	v() && println("Simulating an ARG (simtype $simtype)")
@@ -125,7 +125,7 @@ simulate(N,r,n0;
 	popvar=t->1, 
 	prune_singletons=true,
 	output_history=false,
-	simtype=:kingman) = simulate(SimParam(N,r,N*r,n0,Tmax,K), 
+	simtype=:yule) = simulate(SimParam(N,r,N*r,n0,Tmax,K),
 										verbose=verbose, 
 										vverbose=vverbose, 
 										popvar=popvar, 
