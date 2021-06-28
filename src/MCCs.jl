@@ -25,12 +25,12 @@ end
 function MCCs_pairs_from_arg(arg)
 	MCCs = Dict()
 	for i in 1:arg.degree, j in (i+1):arg.degree
-		MCCs[i,j] = _MCCs_from_arg(arg, i, j)
+		MCCs[i,j] = MCCs_from_arg(arg, i, j)
 		MCCs[j,i] = MCCs[i,j]
 	end
 	return MCCs
 end
-function _MCCs_from_arg(arg, i::Vararg{Int})
+function MCCs_from_arg(arg, i::Vararg{Int})
 	mccs = Array{Array{String,1}}(undef, 0)
 	visited = Dict(x=>false for x in keys(arg.leaves))
 	for (s1, n1) in Iterators.filter(x->!visited[x[1]], arg.leaves)
