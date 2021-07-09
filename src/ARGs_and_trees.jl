@@ -15,13 +15,13 @@ function trees_from_ARG(arg::ARG; prune_singletons = true)
 end
 function trees_from_ARG(an::ARGNode, r::TreeNode, c::Int64)
 	ic = findfirst(x->x[c], an.anccolor)
-	n = TreeNode(deepcopy(an.data[ic]),
+	n = TreeNode(
 		anc = r,
 		isleaf = an.isleaf,
 		isroot = false,
 		label = an.label,
 		tau = an.tau[ic],
-		)
+	)
 	for ac in ARGTools.get_children(an, c)
 		tc = trees_from_ARG(ac, n, c)
 		push!(n.child, tc)
@@ -36,13 +36,13 @@ function trees_from_ARG(ar::ARGNode, c::Int64)
 	if !isnothing(ar.anc[ic])
 		println("problem")
 	end
-	tr = TreeNode(deepcopy(ar.data[ic]),
+	tr = TreeNode(
 		anc = nothing,
 		isleaf = ar.isleaf,
 		isroot = true,
 		label = ar.label,
 		tau = ar.tau[ic],
-		)
+	)
 	for ac in ARGTools.get_children(ar, c)
 		tc = trees_from_ARG(ac, tr, c)
 		push!(tr.child, tc)

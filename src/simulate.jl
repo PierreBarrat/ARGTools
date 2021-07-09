@@ -182,6 +182,8 @@ function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
 		iTc = n*(n-1) /2. /N
 	elseif simtype == :yule
 		iTc = (n-1)/2. /N
+	elseif simtype == :flu
+		iTc = n^0.2 * (n-1) /2. /N
 	end
 
 	t = Distributions.rand(Distributions.Exponential(1. /(iTr + iTc)) )
