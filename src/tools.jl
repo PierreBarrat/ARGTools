@@ -101,6 +101,7 @@ function cut_branch!(n::ARGNode, i::Int64, clr::Int64)
 	n.anccolor[i][clr] = false
 	if !(|)(n.anccolor[i]...)
 		deleteat!(n.anc, i)
+		deleteat!(n.tau, i)
 		deleteat!(n.anccolor, i)
 		deleteat!(n.data, i)
 		if !isnothing(a)
@@ -179,7 +180,7 @@ function prune_singletons!(arg::ARG; v=false, Nit=1e3)
 				# Graft the child onto ancestors
 				v && println("Prune $(n.label).\n Ancestors $([x.label for x in n.anc]).\n Child $(n.children[1].label).")
 				for (i,a) in enumerate(n.anc)
-					ic = findfirst(x->x==n, n.children[1].anc) # Index of n in n.children[1].anc
+					ic = findfirst(==(n), n.children[1].anc) # Index of n in n.children[1].anc
 					clr = n.anccolor[i]
 					regraft!(n.children[1], n, a, clr, n.children[1].tau[ic] + n.tau[i])
 				end
@@ -311,91 +312,16 @@ end
 Get children of `a` for color `clr`. 
 """
 get_children(a::ARGNode, clr::Int64) = a.children[get_children_index(a, clr)]
+child(a::ARGNode, clr::Int) = a.children[get_children_index(a, clr)]
 
-#########
-# """
-# Find the below situation
-# a1***
-# |	*
-# |	a2
-# |	*
-# n****
-# where "|" and "*" are two colors. This is a trivial and useless split and coalescence. Fix it. (See source code of function help for correct display of above situation)
 
-# ## Method
-# Find triplets `(n, a1, a2)` such that `a1, a2` are ancestors of `n`, and `a1` is an ancestor of `a2` for `colors`. 
-# Then, the triplet is validated if the following conditions are met for two colors `clr1` and `clr2` of `n`. 
-# - `a1` is an ancestor of `n` for `clr1`. 
-# - `a2` is an ancestor of `n` for `clr2`. 
-# - `a1` is an ancestor of `a2` for `clr2`. 
-# - `a2` is *not* of color `clr1`. 
-# """
-# function find_trivial_loop!(arg::ARG)
-# 	nloops = 0
-# 	for n in values(arg.nodes)
-# 		# Find loops that need fixing, then fix. Fixing loops modifies indices of ancestors, so I have to proceed this way. 
-# 		loops_to_fix = Array{Tuple{String, String, Int64, Int64},1}(undef, 0)
-# 		for (i1, a1) in enumerate(n.anc)
-# 			for (i2, a2) in enumerate(n.anc)
-# 				flag, colors = is_ancestor(a1, a2)
-# 				if flag && !isnothing(a1) # `a1` is an ancestor of `a2` for `colors`
-# 					for clr1 in findall(n.color)
-# 						for clr2 in findall(n.color)
-# 							if n.anccolor[i1][clr1] && n.anccolor[i2][clr2] && colors[clr2] && !a2.color[clr1]
-# 								nloops += 1
-# 								push!(loops_to_fix, (a1.label, a2.label, clr1, clr2))
-# 							end
-# 						end
-# 					end
-# 				end
-# 			end
-# 		end
-# 		for (l1, l2, clr1, clr2) in loops_to_fix
-# 			println("Fixing loop ($l1, $(n.label), $l2, $clr1, $clr2) ")
-# 			fix_trivial_loop!(arg.nodes[l1], n, arg.nodes[l2], clr1, clr2)
-# 		end
-# 	end
-# 	println("`find_trivial_loop!`: Found $nloops loops to fix.")
-# end
+function get_ancestor_index(a::ARGNode, clr::Int)
+	for (i, ac) in enumerate(a.anccolor)
+		if ac[clr]
+			return i
+		end
+	end
+	return nothing
+end
 
-# """
-# 	fix_trivial_loop!(A::ARGNode, B::ARGNode, C::ARGNode, clr_1::Int64, clr_2::Int64)
-
-# Place `C` on the branch going up from `B` to `A` for `color`. Obviously, `C` should not already be of color `color`.  
-# A***			A     
-# |  *			|*  
-# |  C   -->  	C  
-# |  *			|*  
-# B***			B  
-# With "|" corresponding to `clr_1` and "*" to `clr_2`. (See source code of function help for correct display)
-# ## Steps
-# - Set `C.color[clr_1]` to `true`
-# - Set branch from `C` to `A` to `clr_1` on top of `clr_2`. 
-# - Regraft `B` onto `C` for color `clr_1`. 
-# ## Checks to perform
-# - `C` must be of color `clr_2` and not of `clr_1`. 
-# - `A` and `B` must be of color `clr_1` and `clr_2`.
-# - `B` must be a child of `A` and `C` for resp. `clr_1` and `clr_2`
-# - `C` must be a child of `A` for `clr_2`. 
-# """
-# function fix_trivial_loop!(A::ARGNode, B::ARGNode, C::ARGNode, clr_1::Int64, clr_2::Int64)
-# 	# Checks
-# 	flag = true
-# 	if !((!C.color[clr_1]) && C.color[clr_2])
-# 		println("`C` is not of the correct color")
-# 		flag = false
-# 	end
-# 	flag *= A.color[clr_1] && A.color[clr_2] && B.color[clr_1] && B.color[clr_2]
-# 	flag *= is_ancestor(A, B, clr_1)
-# 	flag *= is_ancestor(C, B, clr_2)
-# 	flag *= is_ancestor(A, C, clr_2)
-# 	if !flag
-# 		error("Conditions for fixing trivial loop are not met.")
-# 	end
-
-# 	# Fixing
-# 	C.color[clr_1] = true
-# 	i = findfirst(x->x.label==A.label, C.anc)
-# 	C.anccolor[i][clr_1] = true
-# 	regraft!(B, A, C, clr_1)
-# end
+ancestor(a::ARGNode, clr::Int) = a.anc[get_ancestor_index(a, clr)]
