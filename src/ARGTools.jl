@@ -5,6 +5,7 @@ using Random, Distributions
 
 import Base.show, Base.isequal
 export ARGNode, ARG, show
+export ancestor, children
 
 #=
 ## Some notes
@@ -113,6 +114,7 @@ show(an::ARGNode) = show(stdout, an)
 include("ARGs_and_trees.jl")
 include("tools.jl")
 include("misc.jl")
+include("IO.jl")
 include("MCCs.jl")
 include("simulate.jl")
 

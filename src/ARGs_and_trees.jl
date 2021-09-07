@@ -3,19 +3,26 @@
 	trees_from_ARG(ar::ARGNode, c::Int64)
 	trees_from_ARG(an::ARGNode, r::TreeNode, c::Int64)
 """
-function trees_from_ARG(arg::ARG; prune_singletons = true)
+function trees_from_ARG(
+	arg::ARG;
+	prune_singletons = true, node_data = TreeTools.DEFAULT_NODE_DATATYPE
+)
 	treelist = Array{Tree,1}(undef,0)
 	for c in 1:arg.degree
 		ar = arg.root[c]
-		t = node2tree(trees_from_ARG(ar, c))
+		t = node2tree(trees_from_ARG(ar, c; node_data))
 		prune_singletons && TreeTools.remove_internal_singletons!(t)
 		push!(treelist, t)
 	end
 	return treelist
 end
-function trees_from_ARG(an::ARGNode, r::TreeNode, c::Int64)
+function trees_from_ARG(
+	an::ARGNode, r::TreeNode, c::Int64;
+	node_data = TreeTools.DEFAULT_NODE_DATATYPE
+)
 	ic = findfirst(x->x[c], an.anccolor)
-	n = TreeNode(
+	n = TreeNode(;
+		data = node_data(),
 		anc = r,
 		isleaf = an.isleaf,
 		isroot = false,
@@ -23,12 +30,15 @@ function trees_from_ARG(an::ARGNode, r::TreeNode, c::Int64)
 		tau = an.tau[ic],
 	)
 	for ac in ARGTools.get_children(an, c)
-		tc = trees_from_ARG(ac, n, c)
+		tc = trees_from_ARG(ac, n, c; node_data)
 		push!(n.child, tc)
 	end
 	return n
 end
-function trees_from_ARG(ar::ARGNode, c::Int64)
+function trees_from_ARG(
+	ar::ARGNode, c::Int64;
+	node_data = TreeTools.DEFAULT_NODE_DATATYPE
+)
 	if !ar.isroot[c]
 		@error "Can't root tree on non-root `ARGNode` $(an.label)."
 	end
@@ -36,7 +46,8 @@ function trees_from_ARG(ar::ARGNode, c::Int64)
 	if !isnothing(ar.anc[ic])
 		println("problem")
 	end
-	tr = TreeNode(
+	tr = TreeNode(;
+		data = node_data(),
 		anc = nothing,
 		isleaf = ar.isleaf,
 		isroot = true,
@@ -44,7 +55,7 @@ function trees_from_ARG(ar::ARGNode, c::Int64)
 		tau = ar.tau[ic],
 	)
 	for ac in ARGTools.get_children(ar, c)
-		tc = trees_from_ARG(ac, tr, c)
+		tc = trees_from_ARG(ac, tr, c; node_data)
 		push!(tr.child, tc)
 	end
 	return tr
