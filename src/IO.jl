@@ -21,8 +21,8 @@ end
 function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 	# Color of node
 	color = zeros(Bool, degree)
-	for i in node_data[n][2]["segments"]
-		color[i+1] = true
+	for c in node_data[n][2]["segments"]
+		color[c+1] = true
 	end
 
 	# If n is not a reassorted node
@@ -99,10 +99,13 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 		end
 		an
 	end
+
 	# Adding children
 	for (k,c) in enumerate(n.child)
 		cn = add_node_to_arg!(arg, c, an, node_data, i+k; degree)
-		push!(an.children, cn)
+		if !in(cn, an.children)
+			push!(an.children, cn)
+		end
 	end
 
 	return an
