@@ -178,13 +178,26 @@ r, n and nr are resp. the population reassortment rate, the number of nodes avai
 """
 function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
 	iTr = r*nr
-	if simtype == :kingman 
-		iTc = n*(n-1) /2. /N
-	elseif simtype == :yule
-		iTc = (n-1)/2. /N
+	α = if simtype == :kingman
+		1
 	elseif simtype == :flu
-		iTc = n^0.2 * (n-1) /2. /N
+		0.2
+	elseif simtype == :yule
+		0.
+	else
+		@error "Unknown `simtype` $(simtype)"
 	end
+	iTc = coa_rate(n, N, α)
+	# if simtype == :kingman
+	# 	iTc = n*(n-1) /2. /N
+	# elseif simtype == :yule
+	# 	## Cleaner if there is no factor 2 on the denominator -- does not change much
+	# 	iTc = (n-1)/2. /N
+	# elseif simtype == :flu
+	# 	α = 0.2
+	# 	# iTc = (n/2)^\alpha * (n-1)/N # cleaner with this -- does not change much
+	# 	iTc = n^0.2 * (n-1) /2. /N
+	# end
 
 	t = Distributions.rand(Distributions.Exponential(1. /(iTr + iTc)) )
 	if rand() <= iTc/(iTr + iTc)
@@ -194,6 +207,8 @@ function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
 	end
 	return (t, etype)
 end
+
+coalescence_rate(n, N, α) = (n/2)^α  * (n-1)/N
 
 """
 	do_coalescence!(simstate::SimState, t)
