@@ -177,7 +177,6 @@ Choose type of the next event. Return the time to the time to next event as well
 r, n and nr are resp. the population reassortment rate, the number of nodes available for coalescence and the number of nodes available for reassortment. 
 """
 function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
-	iTr = r*nr
 	α = if simtype == :kingman
 		1
 	elseif simtype == :flu
@@ -187,7 +186,13 @@ function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
 	else
 		@error "Unknown `simtype` $(simtype)"
 	end
-	iTc = coa_rate(n, N, α)
+
+	return choose_event(r, N, n, nr, α)
+end
+function choose_event(r::Real, N::Real, n::Int, nr::Int, α::Real)
+	iTr = r*nr
+	iTc = coalescence_rate(n, N, α)
+
 	# if simtype == :kingman
 	# 	iTc = n*(n-1) /2. /N
 	# elseif simtype == :yule
