@@ -172,7 +172,7 @@ end
 Singletons are nodes `n` such that `length(n.children) == 1`.  
 """
 function prune_singletons!(arg::ARG; v=false, Nit=1e3)
-	npruned = 1
+	npruned = 0
 	nit = 0
 	while has_singletons(arg) && nit < Nit
 		for n in values(arg.nodes)
@@ -215,7 +215,9 @@ end
 """
 	prune_lone_nodes!(arg::ARG; v=false)
 
-A lone node `n` is such that `!n.isleaf && length(n.children)==0`. This can arise when simulating an ARG.
+A lone node `n` is such that `!n.isleaf && length(n.children)==0`.
+This can happen when simulating the ARG.
+*Note to self*: how can this happen?!
 """
 function prune_lone_nodes!(arg::ARG; v=false, Nit=1e3)
 	npruned = 1
@@ -293,15 +295,19 @@ is_ancestor(a::ARGNode, c::Nothing) = (false, zeros(Bool, 0))
 
 Get index of children of `a` for color `clr`. 
 """
-function get_children_index(a::ARGNode, clr::Int64)
+function get_children_index(n::ARGNode, clr::Int)
 	idx = Int64[]
-	if !a.color[clr]
-		error("$(a.label) is not of color $clr")
+	if !n.color[clr]
+		error("$(n.label) is not of color $clr")
 	end
-	for (ic,c) in enumerate(a.children)
-		i = findfirst(x->x==a, c.anc)
-		if c.anccolor[i][clr]
-			push!(idx, ic)
+	for (ic,c) in enumerate(n.children)
+		# Does `c` has ancestor `n` for color `clr`?
+		# Going through all the ancestors of `c` to check
+		for (ia,(a, ac)) in enumerate(zip(c.anc, c.anccolor))
+			if a == n && ac[clr]
+				push!(idx, ic)
+				break
+			end
 		end
 	end
 	return idx

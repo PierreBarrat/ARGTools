@@ -5,12 +5,14 @@
 """
 function trees_from_ARG(
 	arg::ARG;
-	prune_singletons = true, node_data = TreeTools.DEFAULT_NODE_DATATYPE
+	prune_singletons = true,
+	node_data = TreeTools.DEFAULT_NODE_DATATYPE,
+	force_new_labels = false,
 )
 	treelist = Array{Tree,1}(undef,0)
 	for c in 1:arg.degree
 		ar = arg.root[c]
-		t = node2tree(trees_from_ARG(ar, c; node_data))
+		t = node2tree(trees_from_ARG(ar, c; node_data); force_new_labels)
 		prune_singletons && TreeTools.remove_internal_singletons!(t)
 		push!(treelist, t)
 	end
