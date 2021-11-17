@@ -116,14 +116,16 @@ function glue_node_to_ARG!(arg::ARG, tn::TreeNode, ARGanc::Union{ARGNode, Nothin
 		an.isleaf = tn.isleaf
 	else
 		# Create a new ARG node
-		an = ARGNode(degree=arg.degree,
+		an = ARGNode(
+			degree=arg.degree,
 			anc = [ARGanc],
 			anccolor = [_color(color, arg.degree)],
 			color = _color(color, arg.degree), 
 			label = tn.label,
 			data = [tn.data],
 			isroot = convert(Array{Bool}, _color(color, arg.degree)*tn.isroot),
-			isleaf = tn.isleaf)
+			isleaf = tn.isleaf
+		)
 		arg.nodes[an.label] = an
 	end
 	# 
@@ -144,15 +146,16 @@ Build an `ARG` from a single tree. If `degree > 1`, the output will not be a val
 function ARG_from_tree(tree::Tree{T} ; degree = 1) where T
 	# Root
 	arg = ARG(degree=degree)
-	root = ARGNode(degree = degree,
-		anc = [nothing], 
+	root = ARGNode(
+		degree = degree,
+		anc = [nothing],
 		anccolor = [_color(1, degree)],
 		color = _color(1, degree),
 		label = tree.root.label,
 		data = [tree.root.data],
-		isroot = _color(1, degree), 
+		isroot = _color(1, degree),
 		isleaf = tree.root.isleaf
-		)
+	)
 	arg.root[1] = root
 	arg.nodes[root.label] = root
 	# 
@@ -170,14 +173,16 @@ end
 Simple `ARGNode` from a `TreeNode` object, with ancestor `ARGanc` as first ancestor. If `degree > 1`, the first element of color is true and the others are false. 
 """
 function ARGNode_from_TreeNode!(arg::ARG, tn::TreeNode, ARGanc::ARGNode; degree = 1)
-	n = ARGNode(degree=degree,
+	n = ARGNode(
+		degree=degree,
 		anc = [ARGanc],
 		anccolor = [_color(1, degree)],
 		color = _color(1, degree), 
 		label = tn.label,
 		data = [tn.data],
 		isroot = convert(Array{Bool}, _color(1, degree)*tn.isroot),
-		isleaf = tn.isleaf)
+		isleaf = tn.isleaf
+	)
 	for c in tn.child
 		nc = ARGNode_from_TreeNode!(arg, c, n, degree = degree)
 		push!(n.children, nc)
