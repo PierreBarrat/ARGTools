@@ -14,7 +14,8 @@ Regraft node `n` from `oldanc` to `newanc` for color `color`.
 ## Warning  
 Does not handle `Nothing`. Regrafting a root node **or** to `Nothing` will fail. 
 """
-function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, tau=missing; w=false)
+function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, tau=missing; w=false, v=false)
+	v && println("Attempting to regraft $(n.label) from $(oldanc.label) to $(newanc.label) for color $color")
 	i_old = findfirst(x->x==oldanc, n.anc)
 	i_child = findfirst(x->x==n, oldanc.children)
 	if isnothing(i_old)
@@ -34,6 +35,20 @@ function regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, ta
 	end
 	#
 	regraft!(n, oldanc, newanc, color, i_old, tau)
+end
+
+function merge_ancestors!(n::ARGNode)
+	@assert length(n.anc) == 2
+	@assert n.anc[1] == n.anc[2] "$(n.label): $(n.anc)"
+	deleteat!(n.anc, 2)
+	deleteat!(n.anccolor, 2)
+	n.anccolor[1] = [true,true]
+
+	# Branch length
+	n.tau[1] = (n.tau[1]+n.tau[2])/2
+	deleteat!(n.tau, 2)
+
+	return nothing
 end
 """
 	regraft!(n::ARGNode, oldanc::ARGNode, newanc::ARGNode, color::Int64, i_old::Int64)
@@ -103,12 +118,11 @@ function cut_branch!(n::ARGNode, i::Int64, clr::Int64)
 		deleteat!(n.anc, i)
 		deleteat!(n.tau, i)
 		deleteat!(n.anccolor, i)
-		deleteat!(n.data, i)
+		length(n.data) >= i && deleteat!(n.data, i)
 		if !isnothing(a)
 			ic = findfirst(x->x.label==n.label, a.children)
 			deleteat!(a.children, ic)
 		end
-	else 
 	end
 	# Correct colors if necessary
 	correct_color!(a)
@@ -268,9 +282,6 @@ end
 Check if `a` is an ancestor of `c`. Return a `Bool` as well as an array of colors for which `a` is an ancestor of `c`. 		
 """
 function is_ancestor(a::ARGNode, c::ARGNode)
-	# println()
-	# println(a.label)
-	# println(c.label)
 	out = zeros(Bool, length(c.color))
 	flag = false
 	for clr in findall(c.color)
@@ -289,6 +300,31 @@ end
 is_ancestor(a::Nothing, c::ARGNode) = ((|)(c.isroot...), c.isroot)
 is_ancestor(a::Nothing, c::Nothing) = (false, zeros(Bool, 0))
 is_ancestor(a::ARGNode, c::Nothing) = (false, zeros(Bool, 0))
+
+"""
+	is_in_ancestry(a, c)
+
+Is `a` in the ancestry of `c`? (for any color)
+"""
+function is_in_ancestry(a, c)
+	if a == c
+		return true
+	else
+		for clr in findall(c.color)
+			n = c
+			while n != a
+				n = ancestor(n, clr)
+				if isnothing(n)
+					break
+				end
+			end
+			if n == a
+				return true
+			end
+		end
+	end
+	return false
+end
 
 """
 	get_children_index(a::ARGNode, clr::Int64)
@@ -331,3 +367,4 @@ function get_ancestor_index(a::ARGNode, clr::Int)
 end
 
 ancestor(a::ARGNode, clr::Int) = a.anc[get_ancestor_index(a, clr)]
+branch_length(a::ARGNode, clr) = a.tau[get_ancestor_index(a, clr)]

@@ -5,7 +5,7 @@ using Random, Distributions
 
 import Base.show, Base.isequal
 export ARGNode, ARG, show
-export ancestor, children
+export ancestor, children, branch_length
 
 #=
 ## Some notes
