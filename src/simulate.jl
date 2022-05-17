@@ -185,9 +185,7 @@ function initiate(param::SimParam)
 	for i in 1:param.n0
 		an = ARGNode(
 			degree=param.K,
-			anc = Array{Union{ARGNode{TreeTools.MiscData},Nothing}}(
-				nothing, 0
-			),
+			anc = Vector{Any}(undef, 0),
 			label="$(i)_0",
 			isroot = zeros(Bool, param.K),
 			isleaf = true
@@ -234,28 +232,29 @@ function choose_event(r, N, n, nr, s, simtype)
 	end
 	iTs = s
 
-	t = rand(Distributions.Exponential(1. /(iTr + iTc + iTs)))
-	if rand() <= iTc/(iTr + iTc + iTs)
-		etype = :coa
-	elseif rand() <= (iTc + iTr)/(iTr + iTc + iTs)
-		etype = :split
-	else
-		etype = :add_leaf
+	tc = rand(Exponential(1/iTc))
+	tr = rand(Exponential(1/iTr))
+	ts = rand(Exponential(1/iTs))
+
+	if tc <= min(tr, ts)
+		return tc, :coa
+	elseif tr <= min(tc, ts)
+		return tr, :split
+	elseif ts <= min(tc, tr)
+		return ts, :add_leaf
 	end
-	return (t, etype)
 end
 
 function add_leaf!(simstate::SimState, t, degree)
 	τ = get_exact_t() + t
-	println("$(length(simstate.arg.leaves)+1)_0")
-	@info "Hi"
+
 	an = ARGNode(
 		label = "$(length(simstate.arg.leaves)+1)_0",
-		isroot = false,
+		anc = Vector{Any}(undef, 0),
+		isroot = zeros(Bool, degree),
 		isleaf = true,
-		anc = nothing,
 		degree = degree,
-		tau = τ * ones(Float64, degree)
+		tau = Vector{Float64}(undef, 0)
 	)
 	simstate.arg.nodes[an.label] = an
 	simstate.arg.leaves[an.label] = an
@@ -264,7 +263,7 @@ function add_leaf!(simstate::SimState, t, degree)
 	push!(simstate.eligible_for_coalescence, an.label)
 	push!(simstate.eligible_for_reassortment, an.label)
 	for i in 1:length(simstate.pop_per_color)
-		pop_per_color[i] += 1
+		simstate.pop_per_color[i] += 1
 	end
 
 	return an
@@ -337,6 +336,7 @@ Coalesce `n1` and `n2` into a single `ARGNode`, and adds it to `arg`.
 """
 function do_coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2, simstate)
 	vv() && println("Attempting to coalesce $(n1.label) and $(n2.label)")
+	vv() && println("Respective branch lenghts: $t1 - $t2")
 	# Parent node
 	new_label = "internal_$(get_discrete_t())"
 	new_color = convert(Array{Bool,1}, n1.color .| n2.color)
