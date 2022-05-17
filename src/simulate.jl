@@ -145,6 +145,7 @@ end
 		N,r,n0;
 		K=2,
 		s = 0,
+		nmax = n0,
 		Tmax=1e6,
 		verbose=false,
 		vverbose=false,
