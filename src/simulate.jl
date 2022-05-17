@@ -13,7 +13,7 @@ let verbose::Bool = false, vverbose::Bool = false
 	global set_vverbose(v) = (vverbose = v)
 end
 
-let disc_t::Int64, exact_t::Float64
+let disc_t::Int, exact_t::Float64
 	global reset_discrete_t() = (disc_t = 1)
 	global inc_discrete_t() = (disc_t += 1)
 	global get_discrete_t() = (disc_t)
@@ -26,42 +26,45 @@ end
 # What matters is n/(N*r) where n is the size of the current ancestry
 # If 2/(Nr) is small, it's likely that a split happens before a coalescence before the last two ancestors coalesce. 
 struct SimParam
-	N::Int64 # Global pop. size
+	N::Int # Global pop. size
 	r::Float64 # Per individual recombination rate
 	ρ::Float64 # Population reassortment rate (i.e. N*r)
-	n0::Int64 # Initial sample size
-	Tmax::Int64 # Maximal number of generations
-	K::Int64 # Degree of the ARG
+	n0::Int # Initial sample size
+	Tmax::Int # Maximal number of generations
+	K::Int # Degree of the ARG
+	nmax::Int # Maximal sample size
+	s::Float64 # Rate at which leaves are added to the population
 end
 mutable struct SimState
 	arg::ARG
 	node_times::Dict{String, Float64} # Exact time of each node
 	found_color_root::Array{Bool,1} # Roots found for different colors. 
-	pop_per_color::Array{Int64,1} # Number of current ancestors that have a given color
+	pop_per_color::Array{Int,1} # Number of current ancestors that have a given color
 	eligible_for_reassortment::Array{String,1} # Nodes of the arg eligible for reassortment
 	eligible_for_coalescence::Array{String,1} # 
 end
 mutable struct SimSnapshot # Used to record history of the simulation
 	N::Real # Population size
-	nc::Int64 # Number of nodes eligible for coalescence
-	nr::Int64 # Number of nodes eligible for reassortment
-	pop_per_color::Array{Int64,1} # Number of nodes per color
+	nc::Int # Number of nodes eligible for coalescence
+	nr::Int # Number of nodes eligible for reassortment
+	pop_per_color::Array{Int,1} # Number of nodes per color
 	event::Union{Symbol, Nothing} # :coa or :split 
-	discrete_t::Int64 # Number of the event
+	discrete_t::Int # Number of the event
 	exact_t::Float64 # Time of the event
 end
 
 """
 	simulate(param::SimParam)
-	simulate(N,r,n0; K=2, kwargs..)
 """
-function simulate(param::SimParam; 
+function simulate(
+	param::SimParam;
 	verbose=false, 
 	vverbose = false,
 	prune_singletons=true,
 	popvar=t->1, 
 	output_history = false,
-	simtype = :yule)
+	simtype = :yule
+)
 	set_verbose(verbose)
 	set_vverbose(vverbose)
 	v() && println("Simulating an ARG (simtype $simtype)")
@@ -69,25 +72,45 @@ function simulate(param::SimParam;
 	simstate = initiate(param)
 	reset_discrete_t()
 	reset_exact_t()
-	simhistory = SimSnapshot[SimSnapshot(param.N, length(simstate.eligible_for_coalescence), 
+	simhistory = SimSnapshot[SimSnapshot(
+		param.N,
+		length(simstate.eligible_for_coalescence),
 		length(simstate.eligible_for_reassortment), 
 		simstate.pop_per_color,
 		nothing,
 		get_discrete_t(),
-		get_exact_t())]
+		get_exact_t()
+	)]
+	n_tot = param.n0
+
 	sim = true
 	while sim
 		N = param.N * popvar(get_exact_t())
-		τ, etype = choose_event(param.r, N, 
+		s = if n_tot >= param.nmax
+			0
+		elseif true in simstate.found_color_root
+			0
+		else
+			param.s
+		end
+
+		τ, etype = choose_event(
+			param.r,
+			N,
 			length(simstate.eligible_for_coalescence), 
 			length(simstate.eligible_for_reassortment),
-			simtype)
+			s,
+			simtype,
+		)
 		vv() && println()
 		v() && println("Event : $etype - Time $τ")
 		if etype == :coa
 			do_coalescence!(simstate, τ)
 		elseif etype == :split
 			do_split!(simstate, τ)
+		elseif etype == :add_leaf
+			add_leaf!(simstate, τ, param.K)
+			n_tot += 1
 		end
 		inc_discrete_t()
 		inc_exact_t(τ)
@@ -117,21 +140,39 @@ function simulate(param::SimParam;
 		return simstate.arg
 	end
 end
-simulate(N,r,n0; 
+"""
+	simulate(
+		N,r,n0;
+		K=2,
+		s = 0,
+		Tmax=1e6,
+		verbose=false,
+		vverbose=false,
+		popvar=t->1,
+		prune_singletons=true,
+		output_history=false,
+		simtype=:yule,
+	)
+"""
+function simulate(
+	N,r,n0;
 	K=2, 
+	s = 0,
+	nmax = n0,
 	Tmax=1e6,
 	verbose=false, 
 	vverbose=false, 
 	popvar=t->1, 
 	prune_singletons=true,
 	output_history=false,
-	simtype=:yule) = simulate(SimParam(N,r,N*r,n0,Tmax,K),
-										verbose=verbose, 
-										vverbose=vverbose, 
-										popvar=popvar, 
-										prune_singletons=prune_singletons,
-										output_history = output_history,
-										simtype=simtype)
+	simtype=:yule,
+)
+
+	simulate(
+		SimParam(N, r, N*r, n0, Tmax, K, nmax, s);
+		verbose, vverbose, popvar, prune_singletons, output_history, simtype,
+	)
+end
 
 
 """
@@ -142,27 +183,33 @@ Create `param.n0` `ARGNode` structures with uninitialized parents.
 function initiate(param::SimParam)
 	arg = ARG(degree=param.K)
 	for i in 1:param.n0
-		an = ARGNode(degree=param.K, 
-			anc = Array{Union{ARGNode{TreeTools.MiscData},Nothing}}(nothing, 0),
+		an = ARGNode(
+			degree=param.K,
+			anc = Array{Union{ARGNode{TreeTools.MiscData},Nothing}}(
+				nothing, 0
+			),
 			label="$(i)_0",
 			isroot = zeros(Bool, param.K),
-			isleaf = true)
+			isleaf = true
+		)
 		arg.nodes[an.label] = an
 		arg.leaves[an.label] = an
 	end
 
-	return SimState(arg, 
-			Dict(x=>0. for x in keys(arg.nodes)),
-			zeros(Bool,param.K),
-			param.n0*ones(Int64,param.K),
-			collect(keys(arg.nodes)),
-			collect(keys(arg.nodes)))
+	return SimState(
+		arg,
+		Dict(x=>0. for x in keys(arg.nodes)),
+		zeros(Bool,param.K),
+		param.n0*ones(Int,param.K),
+		collect(keys(arg.nodes)),
+		collect(keys(arg.nodes))
+	)
 end
 
 """
-	halt_condition(simstate::SimState, Tmax::Int64)
+	halt_condition(simstate::SimState, Tmax::Int)
 """
-function halt_condition(simstate::SimState, Tmax::Int64)
+function halt_condition(simstate::SimState, Tmax::Int)
 	if (&)(simstate.found_color_root...) 
 		v() && println("Stopping: Roots for all colors have been found.")
 		return true
@@ -171,12 +218,12 @@ function halt_condition(simstate::SimState, Tmax::Int64)
 end
 
 """
-	choose_event(r::Real, N::Real, n::Int, nr::Int)
+	choose_event(r, N, n, nr, s, simtype)
 
 Choose type of the next event. Return the time to the time to next event as well as its type `:coa` or `:split`.  
 r, n and nr are resp. the population reassortment rate, the number of nodes available for coalescence and the number of nodes available for reassortment. 
 """
-function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
+function choose_event(r, N, n, nr, s, simtype)
 	iTr = r*nr
 	if simtype == :kingman 
 		iTc = n*(n-1) /2. /N
@@ -185,14 +232,42 @@ function choose_event(r::Real, N::Real, n::Int, nr::Int, simtype::Symbol)
 	elseif simtype == :flu
 		iTc = n^0.2 * (n-1) /2. /N
 	end
+	iTs = s
 
-	t = Distributions.rand(Distributions.Exponential(1. /(iTr + iTc)) )
-	if rand() <= iTc/(iTr + iTc)
+	t = rand(Distributions.Exponential(1. /(iTr + iTc + iTs)))
+	if rand() <= iTc/(iTr + iTc + iTs)
 		etype = :coa
-	else
+	elseif rand() <= (iTc + iTr)/(iTr + iTc + iTs)
 		etype = :split
+	else
+		etype = :add_leaf
 	end
 	return (t, etype)
+end
+
+function add_leaf!(simstate::SimState, t, degree)
+	τ = get_exact_t() + t
+	println("$(length(simstate.arg.leaves)+1)_0")
+	@info "Hi"
+	an = ARGNode(
+		label = "$(length(simstate.arg.leaves)+1)_0",
+		isroot = false,
+		isleaf = true,
+		anc = nothing,
+		degree = degree,
+		tau = τ * ones(Float64, degree)
+	)
+	simstate.arg.nodes[an.label] = an
+	simstate.arg.leaves[an.label] = an
+
+	simstate.node_times[an.label] = τ
+	push!(simstate.eligible_for_coalescence, an.label)
+	push!(simstate.eligible_for_reassortment, an.label)
+	for i in 1:length(simstate.pop_per_color)
+		pop_per_color[i] += 1
+	end
+
+	return an
 end
 
 """
@@ -275,7 +350,7 @@ function do_coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2, simstate)
 		isleaf=false)
 	vv() && println("New node $(new_label) with color $new_color")
 	# Children nodes
-	for (n,t) in zip((n1,n2),(t1,t2))
+	for (n,t) in zip((n1,n2), (t1,t2))
 		push!(n.anc, new_node)	# Pushing in case n is the root node of some color. In this case it already has an ancestor (nothing)
 		push!(n.tau, t)
 		push!(n.data, TreeTools.MiscData())
@@ -324,7 +399,7 @@ function do_split!(simstate::SimState, t)
 	simstate.arg.nodes[a2.label] = a2
 	return a1, a2
 end
-function do_split!(n::ARGNode, c1::Array{Int64,1}, c2::Array{Int64,1}, t)
+function do_split!(n::ARGNode, c1::Array{Int,1}, c2::Array{Int,1}, t)
 	vv() && println("Attempting to split node $(n.label) with color $(n.color).")
 	vv() && println("Colors $c1 going left and $c2 going right.")
 	# Parent nodes
@@ -368,7 +443,7 @@ For nodes that are roots for a color `c`, removes all ancestry corresponding to 
 function set_roots_ancestry!(arg::ARG)
 	for (c,ar) in enumerate(arg.root)
 		# Cut branches for indices `todel` and color `c`
-		todel = Int64[]
+		todel = Int[]
 		for (i,clr) in enumerate(ar.anccolor)
 			clr[c] && push!(todel, i)
 		end
