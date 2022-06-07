@@ -3,9 +3,9 @@
 # end
 
 function parse_extended_newick(str::AbstractString; degree=2)
-	S = (str[end] == ';') ? str[1:end-1] : str
+	# S = (str[end] == ';') ? str[1:end-1] : str
 	# strict=false below to avoid warnings for nodes with one child only.
-	tree = parse_newick_string(S; force_new_labels=true, strict=false)
+	tree = parse_newick_string(str; force_new_labels=true)
 	node_data = Dict(n => parse_node_label(n) for n in nodes(tree))
 	arg = arg_from_ext_tree(tree, node_data)
 	return arg
