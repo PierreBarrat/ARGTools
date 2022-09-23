@@ -105,9 +105,9 @@ function simulate(
 		vv() && println()
 		v() && println("Event : $etype - Time $τ")
 		if etype == :coa
-			do_coalescence!(simstate, τ)
+			coalescence!(simstate, τ)
 		elseif etype == :split
-			do_split!(simstate, τ)
+			split!(simstate, τ)
 		elseif etype == :add_leaf
 			add_leaf!(simstate, τ, param.K)
 			n_tot += 1
@@ -271,11 +271,11 @@ function add_leaf!(simstate::SimState, t, degree)
 end
 
 """
-	do_coalescence!(simstate::SimState, t)
+	coalescence!(simstate::SimState, t)
 
 Find two nodes to coalesce in `simstate.arg`. 
 """
-function do_coalescence!(simstate::SimState, t)
+function coalescence!(simstate::SimState, t)
 	# Chosing two nodes
 	if length(simstate.eligible_for_coalescence) == 1
 		@error "Can't coalesce singleton population"
@@ -291,7 +291,7 @@ function do_coalescence!(simstate::SimState, t)
 	t2 = t + get_exact_t() - simstate.node_times[n2.label]
 
 	# Coalesce
-	new_node = do_coalescence!(simstate.arg, n1, n2, t1, t2, simstate)
+	new_node = coalescence!(simstate.arg, n1, n2, t1, t2, simstate)
 	for (i,c) in enumerate(n1.color .& n2.color)
 		simstate.pop_per_color[i] -= c # If n1 and n2 have color c, remove one 
 		if simstate.pop_per_color[i] == 1 && !simstate.found_color_root[i]
@@ -331,11 +331,11 @@ function do_coalescence!(simstate::SimState, t)
 	simstate.arg.nodes[new_node.label] = new_node
 end
 """	
-	do_coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2)
+	coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2)
 
 Coalesce `n1` and `n2` into a single `ARGNode`, and adds it to `arg`. 
 """
-function do_coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2, simstate)
+function coalescence!(arg::ARG, n1::ARGNode, n2::ARGNode, t1, t2, simstate)
 	vv() && println("Attempting to coalesce $(n1.label) and $(n2.label)")
 	vv() && println("Respective branch lenghts: $t1 - $t2")
 	# Parent node
@@ -363,44 +363,60 @@ end
 
 """
 """
-function do_split!(simstate::SimState, t)
+function split!(simstate::SimState, t)
 	# Choose a node
 	n = simstate.arg.nodes[sample(simstate.eligible_for_reassortment)]
+
 	# Choose a color split
-	nc1 = rand(1:n.degree-1)
-	tmp = shuffle(findall(n.color))
-	c1 = tmp[1:nc1]
-	c2 = tmp[(nc1+1):end]
+	# Use ghost segments for other colors so that reassortment rate stays constant during the simulation
+	# Split all segments, including ghosts
+	colors = shuffle(1:simstate.arg.degree)
+	bar = rand(1:(simstate.arg.degree-1))
+	cs1, cs2 = sort!(colors[1:bar]), sort!(colors[(bar+1):end])
+
+	# Map this to colors in `n`
+	c1 = cs1[findall(c -> n.color[c], cs1)]
+	c2 = cs2[findall(c -> n.color[c], cs2)]
+
+	# println("color split: ", cs1, " / ", cs2)
+	# println("node colors: ", n.color)
+	# println("final split: ", c1, " / ", c2)
+	# println()
+	if isempty(c1) || isempty(c2)
+		return n
+	else
+		return split!(simstate, n, c1, c2, t)
+	end
+end
+
+function split!(simstate::SimState, n, c1, c2, t)
+	@assert !isempty(c1) && !isempty(c2)
 	# Split it backwards
-	a1, a2 = do_split!(n, c1, c2, t + get_exact_t() - simstate.node_times[n.label])
-	# Temp check -- 
-	# for c in findall(simstate.found_color_root)
-	# 	if a1.color[c] || a2.color[c] || n.color[c]
-	# 		println("Split of node $(n.label) with color $(n.color).")
-	# 		println(n.isroot)
-	# 		println("$(a1.label) with color $(a1.color)")
-	# 		println("$(a2.label) with color $(a2.color)")
-	# 	end
-	# end
+	a1, a2 = split!(n, c1, c2, t + get_exact_t() - simstate.node_times[n.label])
+
 	# node times
 	for a in (a1,a2)
 		simstate.node_times[a.label] = t + get_exact_t()
 	end
 	delete!(simstate.node_times, n.label)
-	# eligible_for_reassortment
+
+	# update eligible_for_reassortment
 	deleteat!(simstate.eligible_for_reassortment, findfirst(x->x==n.label, simstate.eligible_for_reassortment))
 	for a in (a1,a2)
 		a.degree > 1 && push!(simstate.eligible_for_reassortment, a.label)
 	end
-	# eligible for coalescence
+
+	# update eligible for coalescence
 	deleteat!(simstate.eligible_for_coalescence, findfirst(x->x==n.label, simstate.eligible_for_coalescence))
 	push!(simstate.eligible_for_coalescence, a1.label, a2.label)
+
 	# Add ancestors to arg
 	simstate.arg.nodes[a1.label] = a1
 	simstate.arg.nodes[a2.label] = a2
+
 	return a1, a2
 end
-function do_split!(n::ARGNode, c1::Array{Int,1}, c2::Array{Int,1}, t)
+function split!(n::ARGNode, c1::Array{Int,1}, c2::Array{Int,1}, t)
 	vv() && println("Attempting to split node $(n.label) with color $(n.color).")
 	vv() && println("Colors $c1 going left and $c2 going right.")
 	# Parent nodes
