@@ -223,14 +223,16 @@ Choose type of the next event. Return the time to the time to next event as well
 r, n and nr are resp. the population reassortment rate, the number of nodes available for coalescence and the number of nodes available for reassortment. 
 """
 function choose_event(r, N, n, nr, s, simtype)
-	iTr = r*nr
-	if simtype == :kingman 
-		iTc = n*(n-1) /2. /N
+
+	α = if simtype == :kingman
+		1
 	elseif simtype == :yule
-		iTc = (n-1)/2. /N
+		0
 	elseif simtype == :flu
-		iTc = n^0.2 * (n-1) /2. /N
-	end
+		0.2
+	else
+	iTc = (n/2)^α * (n-1)/N
+	iTr = r*nr
 	iTs = s
 
 	tc = rand(Exponential(1/iTc))
