@@ -231,6 +231,8 @@ function choose_event(r, N, n, nr, s, simtype)
 	elseif simtype == :flu
 		0.2
 	else
+		error("Unknown simtype $simtype")
+	end
 	iTc = (n/2)^α * (n-1)/N
 	iTr = r*nr
 	iTs = s
