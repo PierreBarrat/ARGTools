@@ -3,7 +3,7 @@ module ARGTools
 using TreeTools
 using Random, Distributions
 
-import Base.show, Base.isequal
+import Base.show, Base.isequal, Base.write
 export ARGNode, ARG, show
 
 #=
@@ -116,6 +116,7 @@ include("misc.jl")
 include("IO.jl")
 include("MCCs.jl")
 include("simulate.jl")
+include("extended_newick.jl")
 
 
 end

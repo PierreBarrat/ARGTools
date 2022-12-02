@@ -50,8 +50,10 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 
 	# If n is a reassorted node that is not already in the ARG
 	# Then we add it as a normal ARG node, but using the reassortment name as a label
-	elseif !haskey(arg.nodes, node_data[n][2]["reassortment"])
-		label = string(node_data[n][2]["reassortment"])
+	elseif !haskey(arg.nodes, string(split(string(node_data[n][1]),"#")[1]))
+		#label = string(node_data[n][2]["reassortment"]) #this is where the name is removed
+		label = string(split(string(node_data[n][1]),"#")[1])
+		#label = string(node_data[n][1])
 		an = ARGNode(;
 			degree,
 			anc = [a],
@@ -76,7 +78,7 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 	# In this case, color represents the color to the ancestor.
 	# --> it must be added to `an.color` and pushed to `an.anccolor`
 	else
-		label = string(node_data[n][2]["reassortment"])
+		label = string(split(string(node_data[n][1]),"#")[1])
 		an = arg.nodes[label]
 		push!(an.anc, a)
 		push!(an.anccolor, color)
