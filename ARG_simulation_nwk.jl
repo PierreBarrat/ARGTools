@@ -44,7 +44,7 @@ write_mccs(outfolder * "inferred_MCCs.dat", iMCCs)
 
 # Write ARG as extended newick
 # Currently ARGTools does not have the functionality to write extended newick
-# this is implemented in TreeKnit
+# this is implemented in TreeKnit -- but only for 2 trees!!!
 arg_TK, rlm, lm1, lm2 = SRG.arg_from_trees(t1, t2, rMCCs)
 TreeKnit.write(outfolder * "arg.nwk", arg_TK)
 

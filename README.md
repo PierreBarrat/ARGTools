@@ -41,4 +41,4 @@ The time to the next coalescent or recombination event is determined by sampling
 
 ## Extended Newick 
 
-ARGs are often visualized in extended newick format [Cardona, G., Rosselló, F. & Valiente, G. Extended Newick: it is time for a standard representation of phylogenetic networks. BMC Bioinformatics 9, 532 (2008). https://doi.org/10.1186/1471-2105-9-532](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-532). Currently, ARGTools does not allow exporting to extended newick format, however the `ARG_simulation_nwk.jl` gives an example how TreeKnit can be used to export ARGs in this format. 
+ARGs are often visualized in extended newick format [Cardona, G., Rosselló, F. & Valiente, G. Extended Newick: it is time for a standard representation of phylogenetic networks. BMC Bioinformatics 9, 532 (2008). https://doi.org/10.1186/1471-2105-9-532](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-532). Currently, ARGTools cannot export ARGs to extended newick format, however the `ARG_simulation_nwk.jl` gives an example how TreeKnit can be used to export ARGs generated in ARGTools in extended newick format. 
