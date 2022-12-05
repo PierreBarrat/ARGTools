@@ -17,6 +17,22 @@ ext_newick = ARGTools.extended_newick(arg; pruned_singletons=false)
     @test s == ext_newick
 end
 
+file = "$(dirname(pathof(ARGTools)))/..//tests/trees/arg_different_roots.nwk"
+s = read(file, String)         
+arg = ARGTools.parse_extended_newick(s)
+ext_newick = ARGTools.extended_newick(arg; pruned_singletons=false)
+@testset "extended_newick - different roots" begin
+    @test s == ext_newick
+end
+
+file = "$(dirname(pathof(ARGTools)))/..//tests/trees/arg_singletons.nwk"
+s = read(file, String)         
+arg = ARGTools.parse_extended_newick(s)
+ext_newick = ARGTools.extended_newick(arg; pruned_singletons=false)
+@testset "extended_newick - singletons" begin
+    @test s == ext_newick
+end
+
 ## test simulations with pruned_singletons
 N = 10_000 # pop size
 n = 4 # Number of lineages
@@ -32,6 +48,14 @@ true_ext_nwk = "((((2_0[&segments={0,1}],1_0[&segments={0,1}])internal_4[&segmen
     @test ext_newick == true_ext_nwk
 end
 
+ext_newick = ARGTools.extended_newick(arg; pruned_singletons=true, tau=true)
+true_ext_nwk = "((((2_0[&segments={0,1}]:3300.7000126785933,1_0[&segments={0,1}]:3300.7000126785933)internal_4[&segments={0,1}])hybrid_node_1#H1[&segments={0}]:26589.174453783642,"*
+"(3_0[&segments={0,1}]:826.1266403639061,4_0[&segments={0,1}]:826.1266403639061)internal_1[&segments={0,1}]:17895.50225658892)internal_10[&segments={1}]:11168.24556950941,"*
+"hybrid_node_1#H1[&segments={1}]:26589.174453783642)internal_11[&segments={1}];"
+@testset "extended_newick - simulated ARGs, K=2, tau=true " begin
+    @test ext_newick == true_ext_nwk
+end
+
 K = 3
 # Simulating the ARG - 3 segments 
 arg = ARGTools.SimulateARG.simulate(N, r, n; K, simtype, seed=12);
@@ -42,12 +66,4 @@ true_ext_nwk_3 = "(((((((2_0[&segments={0,1,2}])hybrid_node_1#H1[&segments={0}],
 "hybrid_node_3#H3[&segments={0}])internal_15[&segments={1,2}],hybrid_node_5#H5[&segments={1,2}])internal_17[&segments={2}];"
 @testset "extended_newick - simulated ARGs, K=3" begin
     @test ext_newick == true_ext_nwk_3
-end
-
-file = "$(dirname(pathof(ARGTools)))/..//tests/trees/arg_different_roots.nwk"
-s = read(file, String)         
-arg = ARGTools.parse_extended_newick(s)
-ext_newick = ARGTools.extended_newick(arg; pruned_singletons=false)
-@testset "extended_newick - different roots" begin
-    @test s == ext_newick
 end

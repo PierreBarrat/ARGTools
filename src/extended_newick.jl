@@ -39,42 +39,7 @@ function color_as_label(color::Array{Bool, 1})
     return name
 end
 
-function extended_newick(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids::Dict)
-	nwk = ""
-	# Dealing with children of a_r
-	if (!a_r.isleaf && !(length(a_r.anc)>1)) || ((length(a_r.anc)>1) && !haskey(hybrids, a_r.label))
-		nwk *= "("
-		for c in a_r.children
-			nwk *= extended_newick(c, a_r, hybrids)
-			nwk *= ","
-		end
-		nwk = nwk[1:end-1] # Removing trailing ','
-		nwk *= ")"
-	end
-	# Adding a_r to hybrid if necessary
-	if (length(a_r.anc)>1) && !haskey(hybrids, a_r.label)
-		i = length(hybrids) +1
-		hybrids[a_r.label] = "#H$(i)"
-	end
-	# Writing a_r itself
-	a_r_label = if (length(a_r.anc)>1)
-		a_r.label * hybrids[a_r.label]
-	else
-		a_r.label
-	end
-	nwk *= a_r_label
-    color = a_r.color
-    for (i, a) in enumerate(a_r.anc)
-        if a == a_r_anc
-            color = a_r.anccolor[i]
-        end
-    end
-	nwk *= color_as_label(color)
-
-	return nwk
-end
-
-function extended_newick(arg::ARG; pruned_singletons=true)
+function extended_newick(arg::ARG; pruned_singletons=true, tau=false)
 	hybrids = Dict()
 	strs = Array{String,1}(undef, 0)
 	roots = Array{ARGNode}(undef, 0)
@@ -110,9 +75,9 @@ function extended_newick(arg::ARG; pruned_singletons=true)
 		end
 		if !seen
 			if pruned_singletons
-				str = extended_newick_pruned(r, nothing, hybrids)
+				str = extended_newick_pruned(r, nothing, hybrids; tau)
 			else
-				str = extended_newick(r, nothing, hybrids)
+				str = extended_newick(r, nothing, hybrids; tau)
 			end
         	push!(strs, str)
 			color_seen = seen_new
@@ -133,7 +98,45 @@ function extended_newick(arg::ARG; pruned_singletons=true)
 	return nwk * ";"
 end
 
-function extended_newick_pruned(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids::Dict)
+function extended_newick(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids::Dict; tau=false)
+	nwk = ""
+	# Dealing with children of a_r
+	if (!a_r.isleaf && !(length(a_r.anc)>1)) || ((length(a_r.anc)>1) && !haskey(hybrids, a_r.label))
+		nwk *= "("
+		for c in a_r.children
+			nwk *= extended_newick(c, a_r, hybrids)
+			nwk *= ","
+		end
+		nwk = nwk[1:end-1] # Removing trailing ','
+		nwk *= ")"
+	end
+	# Adding a_r to hybrid if necessary
+	if (length(a_r.anc)>1) && !haskey(hybrids, a_r.label)
+		i = length(hybrids) +1
+		hybrids[a_r.label] = "#H$(i)"
+	end
+	# Writing a_r itself
+	a_r_label = if (length(a_r.anc)>1)
+		a_r.label * hybrids[a_r.label]
+	else
+		a_r.label
+	end
+	nwk *= a_r_label
+    color = a_r.color
+    for (i, a) in enumerate(a_r.anc)
+        if a == a_r_anc
+            color = a_r.anccolor[i]
+        end
+    end
+	nwk *= color_as_label(color)
+	if tau && !ismissing(a_r.tau[1])
+		nwk *= ":"*string(a_r.tau[1])
+	end
+
+	return nwk
+end
+
+function extended_newick_pruned(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids::Dict; tau=false)
 	nwk = ""
 	is_hybrid = (length(filter(x -> !isnothing(x), a_r.anc))>1)
 	if !a_r.isleaf && (!is_hybrid  || (is_hybrid && !haskey(hybrids, a_r.label)))
@@ -142,7 +145,7 @@ function extended_newick_pruned(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, 
 		end
 		nwk *= "("
 		for c in a_r.children
-			nwk *= extended_newick_pruned(c, a_r, hybrids)
+			nwk *= extended_newick_pruned(c, a_r, hybrids; tau)
 			nwk *= ","
 		end
 		nwk = nwk[1:end-1] # Removing trailing ','
@@ -177,6 +180,9 @@ function extended_newick_pruned(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, 
         end
     end
 	nwk *= color_as_label(color)
+	if tau && !ismissing(a_r.tau[1])
+		nwk *= ":"*string(a_r.tau[1])
+	end
 
 	return nwk
 end
