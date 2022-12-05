@@ -95,3 +95,47 @@ Total branch length of the ARG, for all colors.
 function total_branch_length(arg::ARG)
 	return sum(skipmissing([sum(x.tau) for x in values(arg.nodes)]))
 end
+
+isshared(n) = (sum(n.color) == length(n.color))
+"""
+	clade_depth(node::TreeNode)
+
+Topologic distance from `node` to leaves.
+"""
+function clade_depth(node::ARGNode)
+	d = 0
+	_node = node
+	while !_node.isleaf
+		_node = _node.children[1]
+		d += _node.tau[1]
+	end
+	return d
+end
+
+function clade_depth_no_tau(node::ARGNode)
+	d = 0
+	if !node.isleaf
+		d = max([clade_depth_no_tau(c) for c in node.children]) + 1
+	else
+		d = 1
+	end
+	return d
+end
+
+"""
+    get_r(ρ, n, N, simtype::Symbol)
+
+Convert Reassortment rate scaled to coalescence rate
+into absolute reassortment rate.
+"""
+function get_r(ρ, n, N, simtype::Symbol)
+    if simtype == :kingman
+        return ρ * (n/2) / N
+    elseif simtype == :yule
+        return ρ / N
+    elseif simtype == :flu
+    	return ρ * (n/2)^0.2 / N
+    else
+        @error "Unrecognized `simtype`."
+    end
+end

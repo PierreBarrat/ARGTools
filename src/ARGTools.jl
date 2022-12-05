@@ -116,7 +116,6 @@ include("misc.jl")
 include("IO.jl")
 include("MCCs.jl")
 include("simulate.jl")
-include("extended_newick.jl")
 
 
 end

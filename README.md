@@ -41,4 +41,43 @@ The time to the next coalescent or recombination event is determined by sampling
 
 ## Extended Newick 
 
-ARGs are often visualized in extended newick format [Cardona, G., Rosselló, F. & Valiente, G. Extended Newick: it is time for a standard representation of phylogenetic networks. BMC Bioinformatics 9, 532 (2008). https://doi.org/10.1186/1471-2105-9-532](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-532). Currently, ARGTools cannot export ARGs to extended newick format, however the `ARG_simulation_nwk.jl` gives an example how TreeKnit can be used to export ARGs generated in ARGTools in extended newick format. 
+ARGs are often visualized in extended newick format [Cardona, G., Rosselló, F. & Valiente, G. Extended Newick: it is time for a standard representation of phylogenetic networks. BMC Bioinformatics 9, 532 (2008). https://doi.org/10.1186/1471-2105-9-532](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-532). 
+ARGTools allows the export of ARGs to extended newick format. 
+
+```
+ ARGTools.extended_newick(arg; pruned_singletons=true, tau=false)
+```
+Note that the extended newick format leads to the creation of singletons which are by default pruned when ARGs are simulated in ARGTools. Thus, the `pruned_singletons` parameter should be set to `true` for simulated ARGs. When reading an ARG from an extended newick (`ARGTools.parse_extended_newick()`), and subsequently re-writing the ARG to an extended newick this parameter should be set to `false`. Setting `tau=true` will lead the length of branches to be added to the extended newick file.
+
+An example how to export ARGs generated in ARGTools in extended newick format is presented below. 
+```
+using TreeTools
+using ARGTools
+
+# Parameters of the ARG simulation
+N = 10_000 # pop size
+n = 6 # Number of lineages
+ρ = 1 # Reassortment rate scaled to coalescence rate
+simtype = :kingman
+r = ARGTools.get_r(ρ, n, N, simtype) # Absolute reassortment rate
+# Simulating the ARG - 2 segments
+K = 2
+arg = ARGTools.SimulateARG.simulate(N, r, n; K, simtype);
+
+# The trees for the 2 segments
+t1, t2 = ARGTools.trees_from_ARG(arg);
+
+# Writing results
+outfolder = "ARG_n$(n)_rho$(ρ)_simtype_$(simtype)/"
+mkpath(outfolder)
+write_newick(outfolder * "tree1.nwk", t1)
+write_newick(outfolder * "tree2.nwk", t2)
+## Write ARG to an extended newick
+# simulations prune singletons by default
+ARGTools.write(outfolder * "arg.nwk", arg; pruned_singletons=true)
+
+# The real MCCs can be printed to a file using TreeKnit
+using TreeKnit
+rMCCs = ARGTools.MCCs_from_arg(arg)
+write_mccs(outfolder * "real_MCCs.dat", rMCCs)
+```
