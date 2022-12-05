@@ -201,7 +201,7 @@ function get_key_vals(S)
 	return keys, vals
 end
 
-write(filename::AbstractString, arg::ARG; pruned_singletons=true) = write(filename, extended_newick(arg; pruned_singletons))
+write(filename::AbstractString, arg::ARG; pruned_singletons=true, tau=false) = write(filename, extended_newick(arg; pruned_singletons, tau))
 
 function color_as_label(color::Array{Bool, 1})
     color_int = Array{Int, 1}(undef, 0)
