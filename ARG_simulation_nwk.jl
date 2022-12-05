@@ -25,7 +25,8 @@ n = 6 # Number of lineages
 simtype = :kingman
 r = get_r(ρ, n, N, simtype) # Absolute reassortment rate
 # Simulating the ARG - 2 segments
-arg = ARGTools.SimulateARG.simulate(N, r, n; simtype);
+K = 2
+arg = ARGTools.SimulateARG.simulate(N, r, n; K, simtype);
 
 # The trees for the 2 segments
 t1, t2 = ARGTools.trees_from_ARG(arg);
@@ -39,7 +40,7 @@ mkpath(outfolder)
 write_newick(outfolder * "tree1.nwk", t1)
 write_newick(outfolder * "tree2.nwk", t2)
 write_mccs(outfolder * "real_MCCs.dat", rMCCs)
-## The functionality to write ARGs simulated in ARGTools directly is still in development
+## The functionality to write ARGs (of arbitrary K segments) simulated in ARGTools directly is still in development
 # simulations prune singletons by default
 ARGTools.write(outfolder * "argtools_arg.nwk", arg; pruned_singletons=true)
 

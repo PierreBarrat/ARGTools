@@ -6,12 +6,12 @@ isshared(n) = (sum(n.color) == length(n.color))
 
 Topologic distance from `node` to leaves.
 """
-function clade_depth(node::TreeNode)
+function clade_depth(node::ARGNode)
 	d = 0
 	_node = node
 	while !_node.isleaf
 		_node = _node.children[1]
-		d += _node.tau
+		d += _node.tau[1]
 	end
 	return d
 end
@@ -76,26 +76,42 @@ end
 
 function extended_newick_pruned(arg::ARG)
 	hybrids = Dict()
+	strs = Array{String,1}(undef, 0)
 
-	if arg.root[1] == arg.root[2]
-		# (i)
-        str = extended_newick_pruned(arg.root[1], nothing, hybrids)
-		return str * ";"
-	else
-		if !isshared(arg.root[1]) && !isshared(arg.root[2])
-			#(ii)
-			str1 = extended_newick_pruned(arg.root[1], nothing, hybrids)
-			str2 = extended_newick_pruned(arg.root[2], nothing, hybrids)
-			return "($(str1),$(str2))GlobalRoot:0.;"
-		elseif isshared(arg.root[1])
-			#(iii)
-			str = extended_newick_pruned(arg.root[2], nothing, hybrids)
-			return str * ";"
-		elseif isshared(arg.root[2])
-			str = extended_newick_pruned(arg.root[1], nothing, hybrids)
-			return str * ";"
+	roots = unique(filter(x -> !isnothing(x), arg.root))
+	sort!(roots, by=clade_depth, rev=true)
+	color_seen = zeros(length(roots[1].color))
+
+	for r in roots
+		seen = false
+		seen_new = color_seen
+		for (i,(c,c_seen)) in enumerate(zip(r.color, color_seen))
+			if c && c==c_seen
+				seen = true
+			end
+			if c
+				seen_new[i] = 1
+			end
+		end
+		if !seen
+			str = extended_newick_pruned(r, nothing, hybrids)
+        	push!(strs, str)
+			color_seen = seen_new
 		end
 	end
+	nwk = ""
+	if length(strs) >1
+		nwk *= "("
+		for str in strs
+			nwk *= str
+			nwk *= ","
+		end
+		nwk = nwk[1:end-1] # Removing trailing ','
+		nwk *= ")GlobalRoot:0."
+	else
+		nwk= strs[1]
+	end
+	return nwk * ";"
 end
 
 function extended_newick_pruned(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids::Dict)
@@ -117,7 +133,7 @@ function extended_newick_pruned(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, 
 	if is_hybrid
         if !haskey(hybrids, a_r.label)
             i = length(hybrids) +1
-            color = Array{Bool, 1}(undef, 2)
+            color = Array{Bool, 1}(undef, length(a_r.color))
             for c in 1:length(a_r.anccolor[end])
                 color[c] = any(map(l->l[c],a_r.anccolor))
             end
