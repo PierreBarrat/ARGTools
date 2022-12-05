@@ -16,14 +16,14 @@ function clade_depth(node::ARGNode)
 	return d
 end
 
-function extended_newick(arg::ARG; pruned_singletons=true)
-    hybrids = Dict()
-    if pruned_singletons
-        nwk = extended_newick_pruned(arg)
-    else
-        nwk = extended_newick(arg.root[end], nothing, hybrids)*";"
-    end
-    return nwk
+function clade_depth_no_tau(node::ARGNode)
+	d = 0
+	if !node.isleaf
+		d = max([clade_depth_no_tau(c) for c in node.children]) + 1
+	else
+		d = 1
+	end
+	return d
 end
 
 function color_as_label(color::Array{Bool, 1})
@@ -74,12 +74,27 @@ function extended_newick(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids
 	return nwk
 end
 
-function extended_newick_pruned(arg::ARG)
+function extended_newick(arg::ARG; pruned_singletons=true)
 	hybrids = Dict()
 	strs = Array{String,1}(undef, 0)
-
-	roots = unique(filter(x -> !isnothing(x), arg.root))
-	sort!(roots, by=clade_depth, rev=true)
+	roots = Array{ARGNode}(undef, 0)
+	for i in 1:length(arg.root)
+		try
+			r = arg.root[i]
+			if !isnothing(r)
+				push!(roots, r)
+			end
+		catch e
+			println("There is sth wrong with the ARG")
+		end
+	end
+	roots = unique(roots)
+	#roots = unique(filter(x -> !isnothing(x), arg.root))
+	if ismissing(roots[1].tau[1])
+		sort!(roots, by=clade_depth_no_tau, rev=true)
+	else
+		sort!(roots, by=clade_depth, rev=true)
+	end
 	color_seen = zeros(length(roots[1].color))
 
 	for r in roots
@@ -94,7 +109,11 @@ function extended_newick_pruned(arg::ARG)
 			end
 		end
 		if !seen
-			str = extended_newick_pruned(r, nothing, hybrids)
+			if pruned_singletons
+				str = extended_newick_pruned(r, nothing, hybrids)
+			else
+				str = extended_newick(r, nothing, hybrids)
+			end
         	push!(strs, str)
 			color_seen = seen_new
 		end
