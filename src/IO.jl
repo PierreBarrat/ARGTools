@@ -18,7 +18,7 @@ function arg_from_ext_tree(tree, node_data; degree=2)
 	return arg
 end
 
-function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
+function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2, hybrids=[])
 	# Color of node
 	color = zeros(Bool, degree)
 	for c in node_data[n][2]["segments"]
@@ -53,6 +53,7 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 	elseif !haskey(arg.nodes, string(split(string(node_data[n][1]),"#")[1]))
 		#label = string(node_data[n][2]["reassortment"]) #this is where the name is removed
 		label = string(split(string(node_data[n][1]),"#")[1])
+		push!(hybrids, label)
 		#label = string(node_data[n][1])
 		an = ARGNode(;
 			degree,
@@ -102,9 +103,21 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 		an
 	end
 
+	##check if a is infact a root -> i.e. an internal root
+	if !isnothing(a) && !all(a.isroot) && a.label ∉ hybrids
+		##this happens if the a has lost a color that was seen in n
+		for i in 1:length(color)
+			if color[i] && !a.color[i]
+				##this is a missing color -> root of this subtree
+				arg.root[i] =  a
+				a.isroot[i] = true
+			end
+		end
+	end
+
 	# Adding children
 	for (k,c) in enumerate(n.child)
-		cn = add_node_to_arg!(arg, c, an, node_data, i+k; degree)
+		cn = add_node_to_arg!(arg, c, an, node_data, i+k; degree, hybrids)
 		if !in(cn, an.children)
 			push!(an.children, cn)
 		end
@@ -162,7 +175,11 @@ function parse_annotation(str::AbstractString)
 	for (key, val) in zip(keys, vals)
 		pval = if key == "segments"
 			valstr = split(val[2:end-1], ',') # Skipping the '{' and '}'
-			[parse(Int, s) for s in valstr]
+			if valstr == SubString{String}[""]
+				[]
+			else
+				[parse(Int, s) for s in valstr]
+			end
 		else
 			val
 		end
@@ -221,13 +238,9 @@ function extended_newick(arg::ARG; pruned_singletons=true, tau=false)
 	strs = Array{String,1}(undef, 0)
 	roots = Array{ARGNode}(undef, 0)
 	for i in 1:length(arg.root)
-		try
-			r = arg.root[i]
-			if !isnothing(r)
-				push!(roots, r)
-			end
-		catch e
-			println("There is sth wrong with the ARG")
+		r = arg.root[i]
+		if !isnothing(r)
+			push!(roots, r)
 		end
 	end
 	roots = unique(roots)

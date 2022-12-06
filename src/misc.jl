@@ -115,7 +115,7 @@ end
 function clade_depth_no_tau(node::ARGNode)
 	d = 0
 	if !node.isleaf
-		d = max([clade_depth_no_tau(c) for c in node.children]) + 1
+		d = maximum([clade_depth_no_tau(c) for c in node.children]) + 1
 	else
 		d = 1
 	end
