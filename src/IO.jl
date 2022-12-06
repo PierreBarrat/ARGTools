@@ -244,12 +244,15 @@ function extended_newick(arg::ARG; pruned_singletons=true, tau=false)
 		end
 	end
 	roots = unique(roots)
-	#roots = unique(filter(x -> !isnothing(x), arg.root))
+	
+	#sort roots, the oldest root is the most exterior root and needs to root the ARG
 	if roots[1].isleaf || ismissing(roots[1].children[1].tau[1])
 		sort!(roots, by=clade_depth_no_tau, rev=true)
 	else
 		sort!(roots, by=clade_depth, rev=true)
 	end
+	## keep track of colors that have been added -> if roots[2] has a color that was 
+	## seen in roots[1] it means that roots[2] was added to the nwk with the subtree of roots[1]
 	color_seen = zeros(length(roots[1].color))
 
 	for r in roots
@@ -277,7 +280,7 @@ function extended_newick(arg::ARG; pruned_singletons=true, tau=false)
 			nwk *= ","
 		end
 		nwk = nwk[1:end-1] # Removing trailing ','
-		nwk *= ")GlobalRoot:0."
+		nwk *= ")GlobalRoot"*color_as_label(color_seen)*":0."
 	else
 		nwk= strs[1]
 	end
