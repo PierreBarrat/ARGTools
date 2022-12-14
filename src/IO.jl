@@ -18,7 +18,7 @@ function arg_from_ext_tree(tree, node_data; degree=2)
 	return arg
 end
 
-function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
+function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2, hybrids=[])
 	# Color of node
 	color = zeros(Bool, degree)
 	for c in node_data[n][2]["segments"]
@@ -50,8 +50,11 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 
 	# If n is a reassorted node that is not already in the ARG
 	# Then we add it as a normal ARG node, but using the reassortment name as a label
-	elseif !haskey(arg.nodes, node_data[n][2]["reassortment"])
-		label = string(node_data[n][2]["reassortment"])
+	elseif !haskey(arg.nodes, string(split(string(node_data[n][1]),"#")[1]))
+		#label = string(node_data[n][2]["reassortment"]) #this is where the name is removed
+		label = string(split(string(node_data[n][1]),"#")[1])
+		push!(hybrids, label)
+		#label = string(node_data[n][1])
 		an = ARGNode(;
 			degree,
 			anc = [a],
@@ -76,7 +79,7 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 	# In this case, color represents the color to the ancestor.
 	# --> it must be added to `an.color` and pushed to `an.anccolor`
 	else
-		label = string(node_data[n][2]["reassortment"])
+		label = string(split(string(node_data[n][1]),"#")[1])
 		an = arg.nodes[label]
 		push!(an.anc, a)
 		push!(an.anccolor, color)
@@ -100,9 +103,21 @@ function add_node_to_arg!(arg, n::TreeNode, a, node_data, i; degree=2)
 		an
 	end
 
+	##check if a is infact a root -> i.e. an internal root
+	if !isnothing(a) && !all(a.isroot) && a.label ∉ hybrids
+		##this happens if the a has lost a color that was seen in n
+		for i in 1:length(color)
+			if color[i] && !a.color[i]
+				##this is a missing color -> root of this subtree
+				arg.root[i] =  a
+				a.isroot[i] = true
+			end
+		end
+	end
+
 	# Adding children
 	for (k,c) in enumerate(n.child)
-		cn = add_node_to_arg!(arg, c, an, node_data, i+k; degree)
+		cn = add_node_to_arg!(arg, c, an, node_data, i+k; degree, hybrids)
 		if !in(cn, an.children)
 			push!(an.children, cn)
 		end
@@ -160,7 +175,11 @@ function parse_annotation(str::AbstractString)
 	for (key, val) in zip(keys, vals)
 		pval = if key == "segments"
 			valstr = split(val[2:end-1], ',') # Skipping the '{' and '}'
-			[parse(Int, s) for s in valstr]
+			if valstr == SubString{String}[""]
+				[]
+			else
+				[parse(Int, s) for s in valstr]
+			end
 		else
 			val
 		end
@@ -199,27 +218,135 @@ function get_key_vals(S)
 	return keys, vals
 end
 
+write(filename::AbstractString, arg::ARG; pruned_singletons=true, tau=false) = write(filename, extended_newick(arg; pruned_singletons, tau))
 
-function write_extnewick(arg::ARG)
-	g = add_internal_above_reassorted_leaves(arg)
-	reassorted_nodes = get_reassorted_nodes(arg)
+function color_as_label(color::Array{Bool, 1})
+    color_int = Array{Int, 1}(undef, 0)
+    for (i, c) in enumerate(color)
+        if c
+            push!(color_int, i-1)
+        end
+    end
+    name = "&segments={$(color_int)}"
+    name = replace(name," " => "", "[" => "", "]" => "")
+    name = "["*name*"]"
+    return name
 end
 
-# Array of nodes with more than one parent
-function get_reassorted_nodes(arg)
-	reassorted_nodes = ARGNode[]
-	for (label, n) in arg.nodes
-		if length(n.anc) > 1
-			push!(reassorted_nodes, n.label)
+function extended_newick(arg::ARG; pruned_singletons=true, tau=false)
+	hybrids = Dict()
+	strs = Array{String,1}(undef, 0)
+	roots = Array{ARGNode}(undef, 0)
+	for i in 1:length(arg.root)
+		r = arg.root[i]
+		if !isnothing(r)
+			push!(roots, r)
 		end
 	end
+	roots = unique(roots)
+	
+	#sort roots, the oldest root is the most exterior root and needs to root the ARG
+	if roots[1].isleaf || ismissing(roots[1].children[1].tau[1])
+		sort!(roots, by=clade_depth_no_tau, rev=true)
+	else
+		sort!(roots, by=clade_depth, rev=true)
+	end
+	## keep track of colors that have been added -> if roots[2] has a color that was 
+	## seen in roots[1] it means that roots[2] was added to the nwk with the subtree of roots[1]
+	color_seen = zeros(length(roots[1].color))
 
-	return reassorted_nodes
+	for r in roots
+		seen = false
+		seen_new = color_seen
+		for (i,(c,c_seen)) in enumerate(zip(r.color, color_seen))
+			if c && c==c_seen
+				seen = true
+			end
+			if c
+				seen_new[i] = 1
+			end
+		end
+		if !seen
+			str = extended_newick(r, nothing, hybrids; pruned_singletons, tau)
+        	push!(strs, str)
+			color_seen = seen_new
+		end
+	end
+	nwk = ""
+	if length(strs) >1
+		nwk *= "("
+		for str in strs
+			nwk *= str
+			nwk *= ","
+		end
+		nwk = nwk[1:end-1] # Removing trailing ','
+		nwk *= ")GlobalRoot"*color_as_label(color_seen)*":0."
+	else
+		nwk= strs[1]
+	end
+	return nwk * ";"
 end
 
-# Add singletons internal nodes above reassorted leaves
-# Useful for the convention that one segment goes to reassorted nodes with leaves, and the
-# other to the ones without leaves
-function add_internal_above_reassorted_leaves(arg::ARG)
+function extended_newick(a_r::ARGNode, a_r_anc::Union{Nothing, ARGNode}, hybrids::Dict; pruned_singletons=true, tau=false)
+	nwk = ""
+	is_hybrid = (length(filter(x -> !isnothing(x), a_r.anc))>1)
+	if !a_r.isleaf && (!is_hybrid  || (is_hybrid && !haskey(hybrids, a_r.label)))
+		if pruned_singletons && (is_hybrid && !haskey(hybrids, a_r.label))
+			nwk *= "("
+		end
+		nwk *= "("
+		for c in a_r.children
+			nwk *= extended_newick(c, a_r, hybrids; pruned_singletons, tau)
+			nwk *= ","
+		end
+		nwk = nwk[1:end-1] # Removing trailing ','
+		nwk *= ")"
+	end
+	if is_hybrid
+		#add to hybrid, and name if not yet seen
+        if !haskey(hybrids, a_r.label)
+			i = length(hybrids) +1
+			if pruned_singletons
+				color = Array{Bool, 1}(undef, length(a_r.color))
+				for c in 1:length(a_r.anccolor[end])
+					color[c] = any(map(l->l[c],a_r.anccolor))
+				end
+				color_label = color_as_label(color)
+				hybrids[a_r.label] = "hybrid_node_$(i)#H$(i)"
+				if a_r.isleaf
+					nwk *= "("
+				end
+				a_r_label = "$(a_r.label)$(color_label))" *hybrids[a_r.label]
+			else
+				hybrids[a_r.label] = "#H$(i)"
+				a_r_label =  a_r.label * hybrids[a_r.label]
+			end
+        else
+			if pruned_singletons
+            	a_r_label = hybrids[a_r.label]
+			else
+				a_r_label = a_r.label * hybrids[a_r.label]
+			end
+        end
+	else
+        # Writing a_r itself
+        a_r_label = a_r.label
+	end
 
+	#write node information
+	nwk *= a_r_label
+    color = a_r.color
+    for (i, a) in enumerate(a_r.anc)
+        if a == a_r_anc
+            color = a_r.anccolor[i]
+        end
+    end
+	nwk *= color_as_label(color)
+	if tau && !ismissing(a_r.tau[1])
+		nwk *= ":"*string(a_r.tau[1])
+	end
+
+	return nwk
 end
+
+

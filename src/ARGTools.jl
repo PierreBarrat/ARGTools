@@ -3,7 +3,7 @@ module ARGTools
 using TreeTools
 using Random, Distributions
 
-import Base.show, Base.isequal
+import Base.show, Base.isequal, Base.write
 export ARGNode, ARG, show
 
 #=

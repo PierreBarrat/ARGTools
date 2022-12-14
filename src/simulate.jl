@@ -63,10 +63,14 @@ function simulate(
 	prune_singletons=true,
 	popvar=t->1, 
 	output_history = false,
-	simtype = :yule
+	simtype = :yule,
+	seed = nothing
 )
 	set_verbose(verbose)
 	set_vverbose(vverbose)
+	if !isnothing(seed)
+		Random.seed!(seed)
+	end
 	v() && println("Simulating an ARG (simtype $simtype)")
 	# 
 	simstate = initiate(param)
@@ -153,6 +157,7 @@ end
 		prune_singletons=true,
 		output_history=false,
 		simtype=:yule,
+		seed = nothing
 	)
 """
 function simulate(
@@ -167,11 +172,12 @@ function simulate(
 	prune_singletons=true,
 	output_history=false,
 	simtype=:yule,
+	seed = nothing
 )
 
 	simulate(
 		SimParam(N, r, N*r, n0, Tmax, K, nmax, s);
-		verbose, vverbose, popvar, prune_singletons, output_history, simtype,
+		verbose, vverbose, popvar, prune_singletons, output_history, simtype, seed
 	)
 end
 
